@@ -142,7 +142,7 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
 .destaque .corpo{padding:16px}
 .contagem{font-family:'Barlow Condensed'; font-weight:700; font-size:52px; line-height:.9}
 .tiras{display:flex; gap:6px; overflow:hidden; margin:12px 0 4px}
-.tiras>*{flex:0 0 62px; height:62px; border-radius:10px; overflow:hidden}
+.tiras>*{flex:0 0 62px; height:62px; aspect-ratio:1/1; border-radius:10px; overflow:hidden}
 
 /* ---------- cards de exercício ---------- */
 .grade-ex{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
@@ -151,8 +151,8 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
   background:var(--surface); border:1px solid var(--line); border-radius:var(--raio);
   overflow:hidden; cursor:pointer; box-shadow:var(--sombra); position:relative; text-align:left; padding:0;
 }
-.foto{aspect-ratio:4/3; width:100%; background:var(--surface2); position:relative; overflow:hidden}
-.foto img{width:100%; height:100%; object-fit:cover; display:block}
+.foto{aspect-ratio:1/1; width:100%; background:var(--surface2); position:relative; overflow:hidden}
+.foto img{width:100%; height:100%; object-fit:contain; display:block}
 .foto .vazio{
   width:100%; height:100%; display:grid; place-items:center; gap:2px;
   color:var(--texto2); font-size:26px;
@@ -198,7 +198,7 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
   padding:10px; cursor:pointer; overflow:hidden;
 }
 .zona.sobre{border-color:var(--accent); background:var(--surface)}
-.zona img{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:10px; display:block}
+.zona img{width:100%; aspect-ratio:1/1; object-fit:contain; border-radius:10px; display:block}
 
 /* ---------- modal ---------- */
 .tela{
@@ -215,8 +215,8 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
   border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; z-index:2;
 }
 .folha .conteudo{padding:16px}
-.foto-grande{aspect-ratio:4/3; width:100%; background:var(--surface2)}
-.foto-grande img{width:100%; height:100%; object-fit:cover}
+.foto-grande{aspect-ratio:1/1; width:100%; background:var(--surface2)}
+.foto-grande img{width:100%; height:100%; object-fit:contain}
 ol,ul{margin:8px 0; padding-left:20px}
 li{margin:5px 0}
 
@@ -246,8 +246,8 @@ li{margin:5px 0}
   display:flex; gap:11px; align-items:center; padding:10px;
   border:1px solid var(--line); border-radius:12px; background:var(--surface); margin-bottom:8px;
 }
-.item .mini{flex:0 0 56px; height:56px; border-radius:9px; overflow:hidden; background:var(--surface2)}
-.item .mini img{width:100%; height:100%; object-fit:cover}
+.item .mini{flex:0 0 56px; height:56px; aspect-ratio:1/1; border-radius:9px; overflow:hidden; background:var(--surface2)}
+.item .mini img{width:100%; height:100%; object-fit:contain}
 .item .cresce{flex:1; min-width:0}
 .item .cresce strong{font-family:'Barlow Condensed'; font-weight:600; font-size:17px; display:block}
 .vazio-msg{text-align:center; padding:38px 20px; color:var(--texto2)}
@@ -280,7 +280,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.4.0',
+  versao: '1.5.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
   supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
@@ -382,11 +382,15 @@ function redimensionar(arquivo, maior = 1200){
   return new Promise((ok, falha) => {
     const img = new Image(), url = URL.createObjectURL(arquivo);
     img.onload = () => {
-      const escala = Math.min(1, maior / Math.max(img.width, img.height));
+      const lado = Math.min(maior, Math.max(img.width, img.height));
       const tela = document.createElement('canvas');
-      tela.width = Math.round(img.width * escala);
-      tela.height = Math.round(img.height * escala);
-      tela.getContext('2d').drawImage(img, 0, 0, tela.width, tela.height);
+      tela.width = tela.height = lado;
+      const ctx = tela.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, lado, lado);
+      // encaixa a imagem inteira no quadrado, sem cortar nada
+      const escala = Math.min(lado / img.width, lado / img.height);
+      const l = img.width * escala, a = img.height * escala;
+      ctx.drawImage(img, (lado - l) / 2, (lado - a) / 2, l, a);
       URL.revokeObjectURL(url);
       tela.toBlob(b => b ? ok(b) : falha(new Error('Não consegui processar esta imagem.')), 'image/jpeg', .85);
     };
@@ -1123,7 +1127,7 @@ function telaMontar(){
       return `<div class="cartao pad" style="margin-bottom:10px">
         <div class="linha">
           <div class="mini" style="flex:0 0 56px; height:56px; border-radius:9px; overflow:hidden; background:var(--surface2)">
-            ${ex.imagem_url ? `<img src="${esc(ex.imagem_url)}" alt="" style="width:100%;height:100%;object-fit:cover">` : '<div class="vazio" style="display:grid;place-items:center;height:100%">🏋️</div>'}</div>
+            ${ex.imagem_url ? `<img src="${esc(ex.imagem_url)}" alt="" style="width:100%;height:100%;object-fit:contain">` : '<div class="vazio" style="display:grid;place-items:center;height:100%">🏋️</div>'}</div>
           <div class="cresce"><strong class="cond" style="font-size:17px">${n+1}. ${esc(ex.nome || '')}</strong>
             <div class="discreto">${esc(grupoNome(ex.grupo))}</div></div>
           <button class="icone-btn" data-subir="${n}" ${n === 0 ? 'disabled' : ''}>↑</button>
