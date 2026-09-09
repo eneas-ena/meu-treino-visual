@@ -178,6 +178,15 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
 }
 .chip.on{background:var(--ink); border-color:var(--ink); color:var(--bg)}
 
+/* ---------- zona de envio de imagem ---------- */
+.zona{
+  border:2px dashed var(--line); border-radius:14px; background:var(--surface2);
+  min-height:150px; display:grid; place-items:center; text-align:center;
+  padding:10px; cursor:pointer; overflow:hidden;
+}
+.zona.sobre{border-color:var(--accent); background:var(--surface)}
+.zona img{width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:10px; display:block}
+
 /* ---------- modal ---------- */
 .tela{
   position:fixed; inset:0; z-index:60; background:rgba(10,13,18,.55);
@@ -246,9 +255,10 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.0.0',
-  supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',      // ex.: https://xxxxx.supabase.co
-  supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo'     // chave "anon public" do projeto
+  versao: '1.1.0',
+  bucket: 'exercicios',                // pasta de imagens no Supabase Storage
+  supabaseUrl: 'COLE_AQUI_A_URL',      // ex.: https://xxxxx.supabase.co
+  supabaseKey: 'COLE_AQUI_A_CHAVE'     // chave "anon public" do projeto
 };
 
 const DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
@@ -312,10 +322,69 @@ async function tabela(consulta){
 }
 
 /* ---------- imagens ---------- */
+/* Converte endereços de página (Drive, Dropbox) no endereço direto do arquivo. */
+function normalizarUrl(u){
+  if (!u) return u;
+  const drive = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{15,})/);
+  if (drive) return `https://drive.google.com/thumbnail?id=${drive[1]}&sz=w1200`;
+  if (/dropbox\.com/.test(u)) return u.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/[?&]dl=0/, '');
+  return u;
+}
+
+/* Reduz a imagem antes de enviar: menos espaço, carregamento mais rápido. */
+function redimensionar(arquivo, maior = 1200){
+  return new Promise((ok, falha) => {
+    const img = new Image(), url = URL.createObjectURL(arquivo);
+    img.onload = () => {
+      const escala = Math.min(1, maior / Math.max(img.width, img.height));
+      const tela = document.createElement('canvas');
+      tela.width = Math.round(img.width * escala);
+      tela.height = Math.round(img.height * escala);
+      tela.getContext('2d').drawImage(img, 0, 0, tela.width, tela.height);
+      URL.revokeObjectURL(url);
+      tela.toBlob(b => b ? ok(b) : falha(new Error('Não consegui processar esta imagem.')), 'image/jpeg', .85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); falha(new Error('Este arquivo não parece ser uma imagem.')); };
+    img.src = url;
+  });
+}
+
+async function enviarImagem(arquivo){
+  const previa = $('#previa');
+  if (!arquivo) return;
+  if (!/^image\//.test(arquivo.type)) return toast('Escolha um arquivo de imagem (JPG, PNG ou WEBP).', true);
+  if (previa) previa.innerHTML = '<span class="discreto">Enviando imagem…</span>';
+  try{
+    const blob = await redimensionar(arquivo);
+    const nome = (($('#e-nome').value.trim() || 'exercicio')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')) + '-' + Date.now() + '.jpg';
+    const r = await fetch(`${CFG.supabaseUrl}/storage/v1/object/${CFG.bucket}/${nome}`, {
+      method:'POST',
+      headers:{apikey:CFG.supabaseKey, Authorization:'Bearer ' + CFG.supabaseKey,
+               'Content-Type':'image/jpeg', 'x-upsert':'true'},
+      body: blob
+    });
+    if (!r.ok){
+      const t = await r.text();
+      throw new Error(t.includes('row-level security') || t.includes('Unauthorized')
+        ? 'O envio foi recusado. Rode o script storage-imagens.sql no Supabase para liberar a pasta de imagens.'
+        : 'Não foi possível enviar a imagem.');
+    }
+    const publico = `${CFG.supabaseUrl}/storage/v1/object/public/${CFG.bucket}/${nome}`;
+    $('#e-img').value = publico;
+    if (previa) previa.innerHTML = `<img src="${publico}" alt="">`;
+    toast('Imagem enviada.');
+  }catch(e){
+    if (previa) previa.innerHTML = '<span class="discreto">Arraste a imagem aqui ou toque para escolher</span>';
+    toast(e.message, true);
+  }
+}
+
 function foto(ex, classe){
   const cls = classe || 'foto';
   if (ex && ex.imagem_url)
-    return `<div class="${cls}"><img src="${esc(ex.imagem_url)}" alt="${esc(ex.nome)}" loading="lazy"
+    return `<div class="${cls}"><img src="${esc(normalizarUrl(ex.imagem_url))}" alt="${esc(ex.nome)}" loading="lazy"
       onerror="this.parentNode.innerHTML='<div class=\\'vazio\\'>🏋️</div>'"></div>`;
   return `<div class="${cls}"><div class="vazio">🏋️</div></div>`;
 }
@@ -870,10 +939,16 @@ function modalExercicio(){
       <button class="icone-btn" data-fechar-btn>✕</button></div>
     <div class="conteudo">
       <label for="e-nome">Nome</label><input id="e-nome" value="${esc(e.nome || '')}">
-      <label for="e-img">Endereço da imagem</label>
+      <label>Imagem</label>
+      <div id="zona" class="zona" role="button" tabindex="0" title="Arraste uma imagem ou toque para escolher">
+        <div id="previa">${e.imagem_url
+          ? `<img src="${esc(normalizarUrl(e.imagem_url))}" alt="">`
+          : '<span class="discreto">Arraste a imagem aqui ou toque para escolher</span>'}</div>
+      </div>
+      <input id="e-arq" type="file" accept="image/*" style="display:none">
+      <label for="e-img">Ou cole o endereço de uma imagem</label>
       <input id="e-img" placeholder="https://…" value="${esc(e.imagem_url || '')}">
-      <p class="discreto" style="margin:6px 0 0">Cole o link de uma imagem hospedada (Supabase Storage, Google Drive público, Imgur, site do fabricante). O card mostra a imagem assim que o endereço for válido.</p>
-      ${e.imagem_url ? `<div style="margin-top:10px">${foto(e,'foto-grande')}</div>` : ''}
+      <p class="discreto" style="margin:6px 0 0">Link do Google Drive é convertido sozinho, desde que o arquivo esteja compartilhado com "qualquer pessoa com o link".</p>
       <label for="e-desc">Descrição curta</label><input id="e-desc" value="${esc(e.descricao || '')}">
       <div class="grade2">
         <div><label for="e-grupo">Grupo principal</label><select id="e-grupo">
@@ -1115,7 +1190,7 @@ function ligarAdmin(q){
       instrucoes:linhas('#e-ins'), erros:linhas('#e-err'),
       series_sug:$('#e-ser').value, reps_sug:$('#e-rep').value.trim(),
       duracao_sug:$('#e-dur').value, descanso_sug:$('#e-des').value,
-      imagem_url:$('#e-img').value.trim()
+      imagem_url:normalizarUrl($('#e-img').value.trim())
     };
     if (!d.nome) return toast('Informe o nome do exercício.', true);
     be.disabled = true; be.textContent = 'Salvando…';
@@ -1124,6 +1199,23 @@ function ligarAdmin(q){
       await carregarCatalogo(); S.formEx = null; desenhar(); toast('Exercício salvo.');
     }catch(e){ be.disabled = false; be.textContent = 'Salvar exercício'; toast(e.message, true); }
   };
+  const zona = $('#zona'), arq = $('#e-arq');
+  if (zona){
+    zona.onclick = () => arq.click();
+    zona.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') arq.click(); };
+    zona.ondragover = ev => { ev.preventDefault(); zona.classList.add('sobre'); };
+    zona.ondragleave = () => zona.classList.remove('sobre');
+    zona.ondrop = ev => { ev.preventDefault(); zona.classList.remove('sobre'); enviarImagem(ev.dataTransfer.files[0]); };
+    arq.onchange = ev => enviarImagem(ev.target.files[0]);
+    const campo = $('#e-img');
+    campo.onchange = () => {
+      campo.value = normalizarUrl(campo.value.trim());
+      $('#previa').innerHTML = campo.value
+        ? `<img src="${campo.value}" alt="">`
+        : '<span class="discreto">Arraste a imagem aqui ou toque para escolher</span>';
+    };
+  }
+
   q('[data-excluir-ex]', async el => {
     if (!confirm('Excluir este exercício? Ele sairá também dos treinos onde estiver.')) return;
     try{ await rpc('mtv_exercicio_excluir', {p_token:S.token, p_id:el.dataset.excluirEx});
