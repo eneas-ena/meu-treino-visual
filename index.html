@@ -178,6 +178,16 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
 }
 .chip.on{background:var(--ink); border-color:var(--ink); color:var(--bg)}
 
+/* ---------- caixas de marcação ---------- */
+.marcadores{display:grid; gap:8px; margin-top:4px}
+.marcador{
+  display:flex; align-items:center; gap:9px; margin:0; font-size:14px; font-weight:500;
+  color:var(--ink); border:1px solid var(--line); background:var(--surface2);
+  border-radius:11px; padding:11px 13px; cursor:pointer;
+}
+.marcador input{width:19px; height:19px; margin:0; accent-color:var(--accent)}
+.ficha{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+
 /* ---------- zona de envio de imagem ---------- */
 .zona{
   border:2px dashed var(--line); border-radius:14px; background:var(--surface2);
@@ -255,11 +265,21 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.1.0',
+  versao: '1.2.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
-  supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',      // ex.: https://xxxxx.supabase.co
-  supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo'     // chave "anon public" do projeto
+  supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
+  supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
+  iaUrl: ''                            // endereço do Worker de IA (opcional — veja worker-ia.js)
 };
+
+/* Condições de saúde consideradas na sugestão de treino. */
+const CONDICOES = [
+  {slug:'coracao',      nome:'Doenças do coração'},
+  {slug:'respiratorias',nome:'Doenças respiratórias'},
+  {slug:'articulacoes', nome:'Articulações e ossos'},
+  {slug:'metabolicas',  nome:'Condições metabólicas sistêmicas'}
+];
+const IMPACTO = ['burpee','pular-corda','polichinelo','escalador','afundo','kettlebell-swing'];
 
 const DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 const DIAS_LONGO = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
@@ -269,10 +289,11 @@ const NIVEIS = {iniciante:'Iniciante', intermediario:'Intermediário', avancado:
 const S = {
   user:null, token:null, tela:'inicio',
   exercicios:[], grupos:[], equipamentos:[], favoritos:[],
-  treinos:[], historico:[], alunos:[],
+  treinos:[], meusTreinos:[], historico:[], alunos:[],
   alunoSel:null, editor:null, sessao:null, cronometro:null,
   filtro:{busca:'', grupo:'', local:'', equip:'', nivel:'', sofavs:false},
-  diaSel:new Date().getDay(), detalhe:null, picker:false, formAluno:null, formEx:null
+  diaSel:new Date().getDay(), detalhe:null, picker:false, formAluno:null, formEx:null,
+  sugestor:null
 };
 
 /* ---------- utilidades ---------- */
@@ -282,6 +303,16 @@ const grupoNome = slug => (S.grupos.find(g => g.slug === slug) || {}).nome || sl
 const equipNome = slug => (S.equipamentos.find(e => e.slug === slug) || {}).nome || slug || '';
 const exPorId = id => S.exercicios.find(e => e.id === id);
 const tempo = seg => `${String(Math.floor(seg/60)).padStart(2,'0')}:${String(seg%60).padStart(2,'0')}`;
+const condNome = slug => (CONDICOES.find(c => c.slug === slug) || {}).nome || slug;
+function idadeDe(nascimento){
+  if (!nascimento) return null;
+  const n = new Date(nascimento + 'T12:00:00'), h = new Date();
+  let a = h.getFullYear() - n.getFullYear();
+  const m = h.getMonth() - n.getMonth();
+  if (m < 0 || (m === 0 && h.getDate() < n.getDate())) a--;
+  return a >= 0 && a < 120 ? a : null;
+}
+const imcDe = p => (p.altura_cm && p.peso_kg) ? (p.peso_kg / Math.pow(p.altura_cm/100, 2)).toFixed(1) : null;
 const dataBR = iso => new Date(iso).toLocaleDateString('pt-BR') + ' · ' + new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
 function toast(msg, erro){
@@ -410,6 +441,7 @@ async function carregarAluno(){
 }
 async function carregarAdmin(){
   S.alunos = await rpc('mtv_alunos', {p_token:S.token}) || [];
+  S.meusTreinos = await rpc('mtv_treinos_listar', {p_token:S.token, p_aluno:S.user.id}) || [];
 }
 
 async function iniciar(){
@@ -462,12 +494,12 @@ function desenhar(){
   const telas = {
     inicio:telaInicio, exercicios:telaExercicios, treino:telaMeuTreino,
     historico:telaHistorico, perfil:telaPerfil,
-    alunos:telaAlunos, biblioteca:telaBiblioteca, montar:telaMontar
+    alunos:telaAlunos, biblioteca:telaBiblioteca, montar:telaMontar, meutreino:telaMeuTreino
   };
   const corpo = (telas[S.tela] || telaInicio)();
   r.innerHTML = `${cabecalho()}<main>${corpo}</main>${navegacao()}
     ${S.detalhe ? modalDetalhe() : ''}${S.picker ? modalPicker() : ''}
-    ${S.formAluno ? modalAluno() : ''}${S.formEx ? modalExercicio() : ''}`;
+    ${S.formAluno ? modalAluno() : ''}${S.formEx ? modalExercicio() : ''}${S.sugestor ? modalSugestor() : ''}`;
   ligarGeral();
 }
 
@@ -483,7 +515,7 @@ function cabecalho(){
 
 function navegacao(){
   const itens = S.user.papel === 'admin'
-    ? [['alunos','👥','Alunos'],['biblioteca','🏋️','Exercícios'],['montar','📋','Treinos'],['historico','📈','Histórico'],['perfil','👤','Perfil']]
+    ? [['alunos','👥','Alunos'],['biblioteca','🏋️','Exercícios'],['montar','📋','Treinos'],['meutreino','🏃','Meu treino'],['historico','📈','Histórico'],['perfil','👤','Perfil']]
     : [['inicio','🏠','Início'],['exercicios','🏋️','Exercícios'],['treino','📋','Treino'],['historico','📈','Histórico'],['perfil','👤','Perfil']];
   return `<nav class="rodape-nav">${itens.map(([id,ic,nome]) =>
     `<button data-ir="${id}" ${S.tela === id ? 'aria-current="page"' : ''}><i>${ic}</i>${nome}</button>`).join('')}</nav>`;
@@ -633,13 +665,15 @@ function modalDetalhe(){
 }
 
 /* ---------- meu treino (aluno) ---------- */
+function meusTreinos(){ return S.user.papel === 'admin' ? S.meusTreinos : S.treinos; }
 function telaMeuTreino(){
-  if (!S.treinos.length) return `<h2>Meu treino</h2>
+  const lista = meusTreinos();
+  if (!lista.length) return `<h2>Meu treino</h2>
     <div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📋</span>
       <strong>Nenhum treino montado</strong>
-      <p class="discreto">Assim que seu professor montar, ele aparece aqui.</p></div>`;
+      <p class="discreto">${S.user.papel === 'admin' ? 'Vá em Treinos, escolha o seu nome na lista e monte o seu.' : 'Assim que seu professor montar, ele aparece aqui.'}</p></div>`;
   return `<h2>Meu treino</h2>
-  ${S.treinos.map(t => `
+  ${lista.map(t => `
     <div class="cartao pad" style="margin-top:12px">
       <div class="entre">
         <div><span class="selo forte">${DIAS[t.dia_semana]}</span>
@@ -720,7 +754,7 @@ function avisoSaude(){
    MODO TREINO
    ============================================================ */
 function abrirTreino(id){
-  const t = S.treinos.find(x => x.id === id);
+  const t = [...S.treinos, ...S.meusTreinos].find(x => x.id === id);
   if (!t || !t.itens.length) return toast('Este treino está sem exercícios.', true);
   S.sessao = {treino:t, i:0, series:t.itens.map(() => 0), inicio:Date.now(), descanso:null, fim:false};
   desenhar();
@@ -880,6 +914,8 @@ function telaAlunos(){
         <span class="discreto">${esc(a.email)}</span>
         <div style="margin-top:5px; display:flex; gap:5px; flex-wrap:wrap">
           ${a.papel === 'admin' ? '<span class="selo forte">Professor</span>' : ''}
+          ${idadeDe(a.nascimento) ? `<span class="selo">${idadeDe(a.nascimento)} anos</span>` : ''}
+          ${(a.condicoes || []).length ? `<span class="selo">⚕ ${a.condicoes.length}</span>` : ''}
           <span class="selo">${a.treinos} treino${a.treinos == 1 ? '' : 's'}</span>
           <span class="selo">${a.sessoes} ${a.sessoes == 1 ? 'sessão' : 'sessões'}</span>
         </div>
@@ -901,13 +937,26 @@ function modalAluno(){
       <label for="a-senha">Senha ${novo ? '' : '(deixe em branco para manter a atual)'}</label>
       <input id="a-senha" type="text" placeholder="${novo ? 'Defina uma senha' : 'Nova senha'}">
       <div class="grade2">
-        <div><label for="a-tel">Telefone</label><input id="a-tel" value="${esc(a.telefone || '')}"></div>
+        <div><label for="a-tel">Telefone</label><input id="a-tel" type="tel" inputmode="tel" value="${esc(a.telefone || '')}"></div>
         <div><label for="a-papel">Acesso</label><select id="a-papel">
           <option value="aluno" ${a.papel !== 'admin' ? 'selected' : ''}>Aluno</option>
           <option value="admin" ${a.papel === 'admin' ? 'selected' : ''}>Professor</option>
         </select></div>
       </div>
+      <div class="grade3">
+        <div><label for="a-nasc">Nascimento</label><input id="a-nasc" type="date" value="${esc(a.nascimento || '')}"></div>
+        <div><label for="a-alt">Altura (cm)</label><input id="a-alt" type="number" inputmode="numeric" value="${a.altura_cm || ''}"></div>
+        <div><label for="a-peso">Peso (kg)</label><input id="a-peso" type="number" step="0.1" inputmode="decimal" value="${a.peso_kg || ''}"></div>
+      </div>
+      ${a.nascimento || (a.altura_cm && a.peso_kg) ? `<p class="discreto" style="margin-top:6px">
+        ${idadeDe(a.nascimento) ? idadeDe(a.nascimento) + ' anos' : ''}${idadeDe(a.nascimento) && imcDe(a) ? ' · ' : ''}${imcDe(a) ? 'IMC ' + imcDe(a) : ''}</p>` : ''}
+      <label>Doenças e comorbidades</label>
+      <div class="marcadores">${CONDICOES.map(c => `
+        <label class="marcador"><input type="checkbox" data-cond="${c.slug}"
+          ${(a.condicoes || []).includes(c.slug) ? 'checked' : ''}> ${esc(c.nome)}</label>`).join('')}</div>
       <label for="a-obj">Objetivo</label><textarea id="a-obj" style="min-height:64px">${esc(a.objetivo || '')}</textarea>
+      <label for="a-desc">Descrição</label>
+      <textarea id="a-desc" placeholder="Restrições, lesões, orientações médicas, histórico, o que for útil na hora de montar o treino.">${esc(a.observacoes || '')}</textarea>
       <button class="btn bloco" id="btn-salvar-aluno" style="margin-top:16px">Salvar aluno</button>
       ${novo ? '' : `<button class="btn perigo bloco" data-excluir-aluno="${a.id}" style="margin-top:10px">Excluir aluno</button>`}
     </div>
@@ -987,11 +1036,12 @@ function modalExercicio(){
 function telaMontar(){
   if (!S.alunoSel){
     return `<h2>Treinos</h2>
-    <p class="discreto">Escolha o aluno para montar ou revisar os treinos da semana.</p>
-    ${S.alunos.filter(a => a.papel === 'aluno').map(a => `
+    <p class="discreto">Escolha a pessoa para montar ou revisar os treinos da semana. Você também está na lista.</p>
+    ${S.alunos.map(a => `
       <div class="item" style="margin-top:10px">
         <div class="mini" style="display:grid; place-items:center; font-family:'Barlow Condensed'; font-size:22px; font-weight:700">${esc(a.nome[0].toUpperCase())}</div>
-        <div class="cresce"><strong>${esc(a.nome)}</strong><span class="discreto">${a.treinos} treino${a.treinos == 1 ? '' : 's'} montado${a.treinos == 1 ? '' : 's'}</span></div>
+        <div class="cresce"><strong>${esc(a.nome)}${a.id === S.user.id ? ' (você)' : ''}</strong>
+          <span class="discreto">${a.treinos} treino${a.treinos == 1 ? '' : 's'} montado${a.treinos == 1 ? '' : 's'}</span></div>
         <button class="btn pequeno" data-aluno="${a.id}">Abrir</button>
       </div>`).join('') ||
       `<div class="cartao vazio-msg"><span class="emoji">👥</span><strong>Nenhum aluno cadastrado</strong>
@@ -1015,8 +1065,14 @@ function telaMontar(){
       <textarea id="t-obs" style="min-height:60px">${esc(ed.observacoes || '')}</textarea>
     </div>
 
+    ${ed.notas && ed.notas.length ? `<div class="recado"><strong>Sugestão automática — revise antes de salvar.</strong>
+      <ul style="margin:6px 0 0">${ed.notas.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
+
     <div class="sec-titulo"><h3>Exercícios (${ed.itens.length})</h3>
-      <button class="btn pequeno" data-abrir-picker>+ Adicionar</button></div>
+      <div class="linha" style="gap:6px">
+        <button class="btn pequeno secundario" data-abrir-sugestor>✨ Sugerir</button>
+        <button class="btn pequeno" data-abrir-picker>+ Adicionar</button>
+      </div></div>
     ${ed.itens.length ? ed.itens.map((it,n) => {
       const ex = exPorId(it.exercicio_id) || {};
       return `<div class="cartao pad" style="margin-bottom:10px">
@@ -1046,8 +1102,9 @@ function telaMontar(){
   }
 
   return `<div class="linha" style="gap:8px"><button class="icone-btn" data-voltar-aluno>←</button>
-    <h2 style="flex:1">${esc(aluno.nome)}</h2>
+    <h2 style="flex:1">${esc(aluno.nome)}${aluno.id === S.user.id ? ' (você)' : ''}</h2>
     <button class="btn pequeno" data-novo-treino>+ Treino</button></div>
+  ${fichaResumo(aluno)}
   ${S.treinos.length ? S.treinos.map(t => `
     <div class="cartao pad" style="margin-top:12px">
       <div class="entre">
@@ -1059,6 +1116,137 @@ function telaMontar(){
     </div>`).join('')
   : `<div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📋</span>
       <strong>Sem treinos montados</strong><p class="discreto">Crie o primeiro treino da semana.</p></div>`}`;
+}
+
+function fichaResumo(a){
+  const idade = idadeDe(a.nascimento), imc = imcDe(a), cond = a.condicoes || [];
+  if (!idade && !imc && !cond.length && !a.telefone && !a.objetivo && !a.observacoes) return '';
+  return `<div class="cartao pad" style="margin-top:12px">
+    <div class="ficha">
+      ${idade ? `<span class="selo">${idade} anos</span>` : ''}
+      ${a.altura_cm ? `<span class="selo">${a.altura_cm} cm</span>` : ''}
+      ${a.peso_kg ? `<span class="selo">${a.peso_kg} kg</span>` : ''}
+      ${imc ? `<span class="selo">IMC ${imc}</span>` : ''}
+      ${a.telefone ? `<span class="selo">📞 ${esc(a.telefone)}</span>` : ''}
+    </div>
+    ${cond.length ? `<div class="ficha">${cond.map(c => `<span class="selo forte">${esc(condNome(c))}</span>`).join('')}</div>` : ''}
+    ${a.objetivo ? `<p class="discreto" style="margin:10px 0 0"><strong>Objetivo:</strong> ${esc(a.objetivo)}</p>` : ''}
+    ${a.observacoes ? `<p class="discreto" style="margin:6px 0 0">${esc(a.observacoes)}</p>` : ''}
+  </div>`;
+}
+
+/* ============================================================
+   SUGESTÃO DE TREINO
+   Monta um rascunho a partir da ficha. É ponto de partida para
+   o professor revisar, nunca prescrição pronta.
+   ============================================================ */
+function modalSugestor(){
+  const g = S.sugestor;
+  return `<div class="tela" data-fechar><div class="folha">
+    <div class="cabeca"><h3 style="flex:1">Sugerir treino</h3>
+      <button class="icone-btn" data-fechar-btn>✕</button></div>
+    <div class="conteudo">
+      <p class="discreto">O rascunho considera idade, condições de saúde e a descrição da ficha. Tudo pode ser trocado depois.</p>
+      <label>Foco do treino</label>
+      <div class="chips" style="flex-wrap:wrap; overflow:visible">
+        ${S.grupos.map(x => `<button class="chip ${g.foco.includes(x.slug) ? 'on' : ''}" data-foco="${x.slug}">${esc(x.nome)}</button>`).join('')}
+      </div>
+      <div class="grade2">
+        <div><label for="g-qtd">Quantos exercícios</label>
+          <select id="g-qtd">${[4,5,6,7,8].map(q => `<option ${g.qtd === q ? 'selected' : ''}>${q}</option>`).join('')}</select></div>
+        <div><label for="g-local">Onde vai treinar</label>
+          <select id="g-local">${Object.entries(LOCAIS).map(([k,v]) => `<option value="${k}" ${g.local === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      </div>
+      <button class="btn bloco" id="btn-gerar" style="margin-top:16px">Gerar rascunho</button>
+      ${CFG.iaUrl ? `<button class="btn secundario bloco" id="btn-gerar-ia" style="margin-top:10px">Gerar com IA</button>`
+        : `<p class="discreto" style="margin-top:10px">A geração por IA fica disponível depois de configurar o endereço do Worker no início do arquivo.</p>`}
+    </div>
+  </div></div>`;
+}
+
+function gerarSugestao(aluno, opcoes){
+  const idade = idadeDe(aluno.nascimento), cond = aluno.condicoes || [], notas = [];
+  const cardiaco = cond.includes('coracao'), pulmonar = cond.includes('respiratorias');
+  const articular = cond.includes('articulacoes'), metabolico = cond.includes('metabolicas');
+
+  let base = S.exercicios.filter(e => opcoes.local === 'ambos' || e.local === opcoes.local || e.local === 'ambos');
+
+  if (cardiaco || pulmonar || articular || (idade && idade >= 60)){
+    base = base.filter(e => e.dificuldade !== 'avancado');
+    notas.push('Exercícios de nível avançado foram deixados de fora.');
+  }
+  if (articular || cardiaco){
+    base = base.filter(e => !IMPACTO.includes(e.slug));
+    notas.push('Movimentos de impacto e salto foram evitados.');
+  }
+  const descansoExtra = (cardiaco ? 30 : 0) + (pulmonar ? 15 : 0);
+  if (descansoExtra) notas.push(`Descanso aumentado em ${descansoExtra} segundos entre as séries.`);
+  if (metabolico) notas.push('Vale conferir alimentação e horário do treino com o médico que acompanha.');
+  if (aluno.observacoes) notas.push('A descrição da ficha não é lida por este rascunho — confira antes de salvar.');
+
+  const foco = opcoes.foco.length ? opcoes.foco : ['corpo-inteiro','gluteos','peitoral','costas'];
+  const escolhidos = [];
+  const usar = e => { if (e && !escolhidos.find(x => x.id === e.id)) escolhidos.push(e); };
+
+  // um de cada grupo do foco, alternando, até chegar na quantidade
+  let volta = 0;
+  while (escolhidos.length < opcoes.qtd && volta < 6){
+    for (const grupo of foco){
+      if (escolhidos.length >= opcoes.qtd) break;
+      const candidatos = base.filter(e => e.grupo === grupo && !escolhidos.find(x => x.id === e.id));
+      if (candidatos.length) usar(candidatos[Math.floor(Math.random() * candidatos.length)]);
+    }
+    volta++;
+  }
+  // completa com o que houver e fecha com mobilidade ou alongamento
+  const sobra = base.filter(e => !escolhidos.find(x => x.id === e.id) && !['mobilidade','alongamento'].includes(e.grupo));
+  while (escolhidos.length < opcoes.qtd && sobra.length) usar(sobra.splice(Math.floor(Math.random() * sobra.length), 1)[0]);
+  const final = base.filter(e => ['alongamento','mobilidade'].includes(e.grupo));
+  if (final.length) usar(final[Math.floor(Math.random() * final.length)]);
+
+  if (!escolhidos.length){
+    notas.push('Nenhum exercício do catálogo atendeu a esses filtros.');
+    return {itens:[], notas};
+  }
+
+  // básicos e compostos primeiro, mobilidade e alongamento por último
+  const peso = e => ['alongamento','mobilidade'].includes(e.grupo) ? 2 : (e.grupo === 'abdomen' ? 1 : 0);
+  escolhidos.sort((a,b) => peso(a) - peso(b));
+
+  const itens = escolhidos.map(e => ({
+    exercicio_id:e.id,
+    series:Math.max(2, (e.series_sug || 3) - (cardiaco || (idade && idade >= 65) ? 1 : 0)),
+    reps:e.reps_sug || '12',
+    duracao:e.duracao_sug || null,
+    descanso:(e.descanso_sug || 60) + descansoExtra,
+    observacoes:''
+  }));
+  notas.push('Rascunho gerado por regras do próprio app, sem avaliação clínica.');
+  return {itens, notas};
+}
+
+async function sugestaoIA(aluno, opcoes){
+  const resumo = {
+    idade:idadeDe(aluno.nascimento), altura_cm:aluno.altura_cm, peso_kg:aluno.peso_kg,
+    condicoes:(aluno.condicoes || []).map(condNome), objetivo:aluno.objetivo, descricao:aluno.observacoes
+  };
+  const catalogo = S.exercicios
+    .filter(e => opcoes.local === 'ambos' || e.local === opcoes.local || e.local === 'ambos')
+    .map(e => ({id:e.id, nome:e.nome, grupo:e.grupo, dificuldade:e.dificuldade, equipamentos:e.equipamentos}));
+  const r = await fetch(CFG.iaUrl, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({aluno:resumo, opcoes, exercicios:catalogo})
+  });
+  if (!r.ok) throw new Error('O serviço de IA não respondeu. Use o rascunho por regras.');
+  const dado = await r.json();
+  const validos = (dado.itens || []).filter(i => exPorId(i.exercicio_id));
+  if (!validos.length) throw new Error('A IA não devolveu exercícios do catálogo.');
+  return {
+    nome:dado.nome || '',
+    itens:validos.map(i => ({exercicio_id:i.exercicio_id, series:i.series || 3, reps:i.reps || '12',
+      duracao:i.duracao || null, descanso:i.descanso || 60, observacoes:i.observacoes || ''})),
+    notas:[...(dado.notas || []), 'Rascunho escrito por IA, sem avaliação clínica.']
+  };
 }
 
 function modalPicker(){
@@ -1116,10 +1304,9 @@ function ligarGeral(){
   });
   q('.icone-btn[data-ex]', el => { S.detalhe = exPorId(el.dataset.ex); desenhar(); });
   q('.btn[data-fav]', el => alternarFavorito(el.dataset.fav));
-  q('[data-fechar-btn]', () => { S.detalhe = null; S.picker = false; S.formAluno = null; S.formEx = null; desenhar(); });
-  document.querySelectorAll('.tela').forEach(t => t.onclick = ev => {
-    if (ev.target === t){ S.detalhe = null; S.picker = false; S.formAluno = null; S.formEx = null; desenhar(); }
-  });
+  const fecharTudo = () => { S.detalhe = null; S.picker = false; S.formAluno = null; S.formEx = null; S.sugestor = null; desenhar(); };
+  q('[data-fechar-btn]', fecharTudo);
+  document.querySelectorAll('.tela').forEach(t => t.onclick = ev => { if (ev.target === t) fecharTudo(); });
 
   // trocar senha
   const bs = $('#btn-senha');
@@ -1157,15 +1344,18 @@ function ligarAdmin(q){
   const ba = $('#btn-salvar-aluno');
   if (ba) ba.onclick = async () => {
     const dados = {
-      p_token:S.token, p_id:S.formAluno.id || null,
-      p_nome:$('#a-nome').value.trim(), p_email:$('#a-email').value.trim(),
-      p_senha:$('#a-senha').value, p_papel:$('#a-papel').value,
-      p_telefone:$('#a-tel').value.trim(), p_objetivo:$('#a-obj').value.trim()
+      id:S.formAluno.id || null,
+      nome:$('#a-nome').value.trim(), email:$('#a-email').value.trim(),
+      senha:$('#a-senha').value, papel:$('#a-papel').value,
+      telefone:$('#a-tel').value.trim(), objetivo:$('#a-obj').value.trim(),
+      nascimento:$('#a-nasc').value, altura_cm:$('#a-alt').value,
+      peso_kg:$('#a-peso').value, observacoes:$('#a-desc').value.trim(),
+      condicoes:Array.from(document.querySelectorAll('[data-cond]:checked')).map(c => c.dataset.cond)
     };
-    if (!dados.p_nome || !dados.p_email) return toast('Informe nome e e-mail.', true);
+    if (!dados.nome || !dados.email) return toast('Informe nome e e-mail.', true);
     ba.disabled = true; ba.textContent = 'Salvando…';
     try{
-      await rpc('mtv_aluno_salvar', dados);
+      await rpc('mtv_aluno_salvar', {p_token:S.token, p_dados:dados});
       await carregarAdmin(); S.formAluno = null; desenhar(); toast('Aluno salvo.');
     }catch(e){ ba.disabled = false; ba.textContent = 'Salvar aluno'; toast(e.message, true); }
   };
@@ -1231,7 +1421,7 @@ function ligarAdmin(q){
   });
   q('[data-voltar-aluno]', () => { S.alunoSel = null; S.treinos = []; desenhar(); });
   q('[data-voltar-editor]', () => { S.editor = null; desenhar(); });
-  q('[data-novo-treino]', () => { S.editor = {nome:'', dia_semana:1, observacoes:'', itens:[]}; desenhar(); });
+  q('[data-novo-treino]', () => { S.editor = {nome:'', dia_semana:1, observacoes:'', itens:[], notas:[]}; desenhar(); });
   q('[data-editar-treino]', el => {
     const t = S.treinos.find(x => x.id === el.dataset.editarTreino);
     S.editor = {id:t.id, nome:t.nome, dia_semana:t.dia_semana, observacoes:t.observacoes || '',
@@ -1253,6 +1443,39 @@ function ligarAdmin(q){
     [S.editor.itens[n+1], S.editor.itens[n]] = [S.editor.itens[n], S.editor.itens[n+1]]; desenhar(); });
   q('[data-remover]', el => { guardarCampos(); S.editor.itens.splice(+el.dataset.remover, 1); desenhar(); });
 
+  q('[data-abrir-sugestor]', () => {
+    guardarCampos();
+    S.sugestor = {foco:[], qtd:5, local:'ambos'};
+    desenhar();
+  });
+  q('[data-foco]', el => {
+    const f = el.dataset.foco;
+    S.sugestor.foco = S.sugestor.foco.includes(f)
+      ? S.sugestor.foco.filter(x => x !== f) : [...S.sugestor.foco, f];
+    lerOpcoesSugestor(); desenhar();
+  });
+  const aplicar = (resultado, aluno) => {
+    if (!resultado.itens.length) return toast(resultado.notas[resultado.notas.length-1], true);
+    S.editor.itens = resultado.itens;
+    S.editor.notas = resultado.notas;
+    if (!S.editor.nome) S.editor.nome = resultado.nome ||
+      (S.sugestor.foco.length ? S.sugestor.foco.map(grupoNome).join(' e ') : 'Treino sugerido');
+    S.sugestor = null; desenhar();
+    toast('Rascunho pronto. Revise antes de salvar.');
+  };
+  const bg = $('#btn-gerar');
+  if (bg) bg.onclick = () => {
+    lerOpcoesSugestor();
+    aplicar(gerarSugestao(S.alunos.find(a => a.id === S.alunoSel) || {}, S.sugestor));
+  };
+  const bgia = $('#btn-gerar-ia');
+  if (bgia) bgia.onclick = async () => {
+    lerOpcoesSugestor();
+    bgia.disabled = true; bgia.textContent = 'Consultando a IA…';
+    try{ aplicar(await sugestaoIA(S.alunos.find(a => a.id === S.alunoSel) || {}, S.sugestor)); }
+    catch(e){ bgia.disabled = false; bgia.textContent = 'Gerar com IA'; toast(e.message, true); }
+  };
+
   const bt = $('#btn-salvar-treino');
   if (bt) bt.onclick = async () => {
     guardarCampos();
@@ -1263,6 +1486,7 @@ function ligarAdmin(q){
       await rpc('mtv_treino_salvar', {p_token:S.token, p_dados:{...S.editor, aluno_id:S.alunoSel}});
       S.treinos = await rpc('mtv_treinos_listar', {p_token:S.token, p_aluno:S.alunoSel}) || [];
       await carregarAdmin(); S.editor = null; desenhar(); toast('Treino salvo.');
+      if (S.alunoSel === S.user.id) S.meusTreinos = S.treinos;
     }catch(e){ bt.disabled = false; bt.textContent = 'Salvar treino'; toast(e.message, true); }
   };
   q('[data-excluir-treino]', async el => {
@@ -1273,6 +1497,13 @@ function ligarAdmin(q){
       await carregarAdmin(); S.editor = null; desenhar(); toast('Treino excluído.');
     }catch(e){ toast(e.message, true); }
   });
+}
+
+function lerOpcoesSugestor(){
+  if (!S.sugestor) return;
+  const q = $('#g-qtd'), l = $('#g-local');
+  if (q) S.sugestor.qtd = +q.value;
+  if (l) S.sugestor.local = l.value;
 }
 
 /* guarda o que está digitado no editor antes de redesenhar a tela */
