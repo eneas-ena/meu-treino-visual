@@ -143,6 +143,10 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
 .contagem{font-family:'Barlow Condensed'; font-weight:700; font-size:52px; line-height:.9}
 .tiras{display:flex; gap:6px; overflow:hidden; margin:12px 0 4px}
 .tiras>*{flex:0 0 62px; height:62px; aspect-ratio:1/1; border-radius:10px; overflow:hidden}
+.tiras .mais{
+  display:grid; place-items:center; background:var(--surface2); border:1px solid var(--line);
+  font-family:'Barlow Condensed'; font-weight:700; font-size:18px; color:var(--texto2);
+}
 
 /* ---------- cards de exercício ---------- */
 .grade-ex{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
@@ -280,7 +284,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.5.0',
+  versao: '1.6.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
   supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
@@ -429,6 +433,14 @@ async function enviarImagem(arquivo){
     if (previa) previa.innerHTML = '<span class="discreto">Arraste a imagem aqui ou toque para escolher</span>';
     toast(e.message, true);
   }
+}
+
+/* Faixa de miniaturas do treino. Mostra 5 e avisa quantas sobraram. */
+function tiras(itens){
+  const visiveis = itens.slice(0, 5), resto = itens.length - visiveis.length;
+  return `<div class="tiras">
+    ${visiveis.map(i => foto({imagem_url:i.imagem_url, nome:i.nome})).join('')}
+    ${resto > 0 ? `<div class="mais">+${resto}</div>` : ''}</div>`;
 }
 
 function foto(ex, classe){
@@ -590,7 +602,7 @@ function telaInicio(){
             <span class="discreto">${t.itens.length} exercício${t.itens.length === 1 ? '' : 's'}</span></div>
           <div class="contagem">${t.itens.length}</div>
         </div>
-        <div class="tiras">${t.itens.slice(0,5).map(i => foto({imagem_url:i.imagem_url, nome:i.nome}, 'foto')).join('')}</div>
+        ${tiras(t.itens)}
         ${t.observacoes ? `<p class="discreto" style="margin:10px 0 0">${esc(t.observacoes)}</p>` : ''}
         <button class="btn bloco" style="margin-top:14px" data-iniciar="${t.id}">Iniciar treino</button>
       </div>
@@ -1161,7 +1173,7 @@ function telaMontar(){
           <span class="discreto">${t.itens.length} exercício${t.itens.length === 1 ? '' : 's'}</span></div>
         <button class="btn pequeno secundario" data-editar-treino="${t.id}">Editar</button>
       </div>
-      <div class="tiras" style="margin-top:10px">${t.itens.slice(0,5).map(i => foto({imagem_url:i.imagem_url}, 'foto')).join('')}</div>
+      <div style="margin-top:10px">${tiras(t.itens)}</div>
     </div>`).join('')
   : `<div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📋</span>
       <strong>Sem treinos montados</strong><p class="discreto">Crie o primeiro treino da semana.</p></div>`}`;
@@ -1237,11 +1249,15 @@ function gerarSugestao(aluno, opcoes){
   const escolhidos = [];
   const usar = e => { if (e && !escolhidos.find(x => x.id === e.id)) escolhidos.push(e); };
 
+  // a partir de 4 exercícios, o último é reservado para o fechamento
+  const fechamento = opcoes.qtd >= 4;
+  const principais = fechamento ? opcoes.qtd - 1 : opcoes.qtd;
+
   // um de cada grupo do foco, alternando, até chegar na quantidade
   let volta = 0;
-  while (escolhidos.length < opcoes.qtd && volta < 6){
+  while (escolhidos.length < principais && volta < 6){
     for (const grupo of foco){
-      if (escolhidos.length >= opcoes.qtd) break;
+      if (escolhidos.length >= principais) break;
       const candidatos = base.filter(e => e.grupo === grupo && !escolhidos.find(x => x.id === e.id));
       if (candidatos.length) usar(candidatos[Math.floor(Math.random() * candidatos.length)]);
     }
@@ -1249,9 +1265,12 @@ function gerarSugestao(aluno, opcoes){
   }
   // completa com o que houver e fecha com mobilidade ou alongamento
   const sobra = base.filter(e => !escolhidos.find(x => x.id === e.id) && !['mobilidade','alongamento'].includes(e.grupo));
-  while (escolhidos.length < opcoes.qtd && sobra.length) usar(sobra.splice(Math.floor(Math.random() * sobra.length), 1)[0]);
+  while (escolhidos.length < principais && sobra.length) usar(sobra.splice(Math.floor(Math.random() * sobra.length), 1)[0]);
   const final = base.filter(e => ['alongamento','mobilidade'].includes(e.grupo));
-  if (final.length) usar(final[Math.floor(Math.random() * final.length)]);
+  if (fechamento && final.length){
+    usar(final[Math.floor(Math.random() * final.length)]);
+    notas.push('O último é mobilidade ou alongamento, para fechar o treino.');
+  }
 
   if (!escolhidos.length){
     notas.push('Nenhum exercício do catálogo atendeu a esses filtros.');
@@ -1261,6 +1280,7 @@ function gerarSugestao(aluno, opcoes){
   // básicos e compostos primeiro, mobilidade e alongamento por último
   const peso = e => ['alongamento','mobilidade'].includes(e.grupo) ? 2 : (e.grupo === 'abdomen' ? 1 : 0);
   escolhidos.sort((a,b) => peso(a) - peso(b));
+  escolhidos.splice(opcoes.qtd);   // nunca entrega mais do que foi pedido
 
   const itens = escolhidos.map(e => ({
     exercicio_id:e.id,
@@ -1288,7 +1308,7 @@ async function sugestaoIA(aluno, opcoes){
   });
   if (!r.ok) throw new Error('O serviço de IA não respondeu. Use o rascunho por regras.');
   const dado = await r.json();
-  const validos = (dado.itens || []).filter(i => exPorId(i.exercicio_id));
+  const validos = (dado.itens || []).filter(i => exPorId(i.exercicio_id)).slice(0, opcoes.qtd);
   if (!validos.length) throw new Error('A IA não devolveu exercícios do catálogo.');
   return {
     nome:dado.nome || '',
