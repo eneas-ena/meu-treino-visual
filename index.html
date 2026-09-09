@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12161C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Meu Treino Visual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MEU TREINO VISUAL — folha de estilo
+   ============================================================ */
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --surface2:#F6F8FA;
+  --ink:#131820; --muted:#69738220; --texto2:#697382;
+  --line:#DBE1E9; --accent:#D6224C; --accent-ink:#FFFFFF;
+  --ok:#0F9D8F; --alerta:#B45309;
+  --sombra:0 1px 2px rgba(19,24,32,.06), 0 8px 24px rgba(19,24,32,.06);
+  --raio:14px;
+}
+[data-tema="escuro"]{
+  --bg:#12161C; --surface:#1A2029; --surface2:#212934;
+  --ink:#E9EDF2; --texto2:#8B97A7;
+  --line:#2A323D; --accent:#FF3B5F; --accent-ink:#12161C;
+  --ok:#2BC5B4;
+  --sombra:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+h1,h2,h3,.cond{font-family:'Barlow Condensed','Inter',sans-serif; font-weight:700; letter-spacing:.01em; margin:0}
+h1{font-size:29px; line-height:1.1}
+h2{font-size:23px; line-height:1.15}
+h3{font-size:19px}
+a{color:var(--accent)}
+button,input,select,textarea{font-family:inherit; font-size:15px; color:inherit}
+:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+
+/* ---------- estrutura ---------- */
+.topo{
+  position:sticky; top:0; z-index:40; background:var(--surface);
+  border-bottom:1px solid var(--line); padding:10px 16px;
+  padding-top:calc(10px + env(safe-area-inset-top));
+  display:flex; align-items:center; gap:10px;
+}
+.marca{font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:21px; line-height:1}
+.marca span{display:block; font-family:'Inter'; font-weight:500; font-size:10px; color:var(--texto2); letter-spacing:.06em}
+.topo .dir{margin-left:auto; display:flex; gap:6px}
+.icone-btn{
+  width:38px; height:38px; border-radius:11px; border:1px solid var(--line);
+  background:var(--surface2); cursor:pointer; font-size:17px; line-height:1;
+  display:grid; place-items:center;
+}
+main{max-width:920px; margin:0 auto; padding:16px 16px 96px}
+.rodape-nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  background:var(--surface); border-top:1px solid var(--line);
+  display:grid; grid-auto-flow:column; grid-auto-columns:1fr;
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+.rodape-nav button{
+  background:none; border:0; cursor:pointer; padding:7px 2px 5px;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-size:10.5px; font-weight:500; color:var(--texto2); border-radius:10px;
+}
+.rodape-nav button i{font-style:normal; font-size:20px; line-height:1}
+.rodape-nav button[aria-current="page"]{color:var(--accent)}
+
+/* ---------- blocos ---------- */
+.cartao{background:var(--surface); border:1px solid var(--line); border-radius:var(--raio); box-shadow:var(--sombra)}
+.pad{padding:16px}
+.linha{display:flex; align-items:center; gap:10px}
+.entre{display:flex; align-items:center; justify-content:space-between; gap:10px}
+.sec-titulo{display:flex; align-items:baseline; justify-content:space-between; margin:22px 2px 10px}
+.sec-titulo p{margin:0; font-size:13px; color:var(--texto2)}
+.discreto{color:var(--texto2); font-size:13px}
+
+.btn{
+  border:0; border-radius:12px; padding:13px 18px; font-weight:600; cursor:pointer;
+  background:var(--accent); color:var(--accent-ink); font-size:15px;
+}
+.btn:active{transform:translateY(1px)}
+.btn.bloco{display:block; width:100%; text-align:center}
+.btn.secundario{background:var(--surface2); color:var(--ink); border:1px solid var(--line)}
+.btn.fantasma{background:transparent; color:var(--accent); padding:8px 10px}
+.btn.perigo{background:transparent; color:var(--accent); border:1px solid var(--line)}
+.btn.pequeno{padding:8px 12px; font-size:13.5px; border-radius:10px}
+.btn[disabled]{opacity:.45; cursor:not-allowed}
+
+label{display:block; font-size:12.5px; font-weight:600; color:var(--texto2); margin:12px 0 5px}
+input,select,textarea{
+  width:100%; background:var(--surface2); border:1px solid var(--line);
+  border-radius:11px; padding:12px 13px;
+}
+textarea{min-height:92px; resize:vertical; line-height:1.45}
+.grade2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.grade3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px}
+
+.selo{
+  display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600;
+  padding:3px 8px; border-radius:999px; background:var(--surface2);
+  border:1px solid var(--line); color:var(--texto2); white-space:nowrap;
+}
+.selo.forte{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+
+/* ---------- dias da semana ---------- */
+.dias{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin:14px 0}
+.dias button{
+  border:1px solid var(--line); background:var(--surface); border-radius:12px;
+  padding:9px 0 8px; cursor:pointer; text-align:center; font-family:'Barlow Condensed';
+  font-weight:600; font-size:15px; color:var(--texto2); position:relative;
+}
+.dias button.marcado{color:var(--ink)}
+.dias button.marcado::after{
+  content:""; position:absolute; left:50%; bottom:5px; translate:-50% 0;
+  width:5px; height:5px; border-radius:50%; background:var(--accent);
+}
+.dias button.ativo{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.dias button.ativo::after{background:var(--accent-ink)}
+
+/* ---------- destaque do treino de hoje ---------- */
+.destaque{
+  background:var(--surface); border:1px solid var(--line); border-radius:18px;
+  overflow:hidden; box-shadow:var(--sombra);
+}
+.destaque .faixa{background:var(--accent); color:var(--accent-ink); padding:9px 16px;
+  font-family:'Barlow Condensed'; font-weight:600; font-size:15px; letter-spacing:.04em}
+.destaque .corpo{padding:16px}
+.contagem{font-family:'Barlow Condensed'; font-weight:700; font-size:52px; line-height:.9}
+.tiras{display:flex; gap:6px; overflow:hidden; margin:12px 0 4px}
+.tiras>*{flex:0 0 62px; height:62px; border-radius:10px; overflow:hidden}
+
+/* ---------- cards de exercício ---------- */
+.grade-ex{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
+@media(min-width:700px){.grade-ex{grid-template-columns:repeat(3,1fr)}}
+.card-ex{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--raio);
+  overflow:hidden; cursor:pointer; box-shadow:var(--sombra); position:relative; text-align:left; padding:0;
+}
+.foto{aspect-ratio:4/3; width:100%; background:var(--surface2); position:relative; overflow:hidden}
+.foto img{width:100%; height:100%; object-fit:cover; display:block}
+.foto .vazio{
+  width:100%; height:100%; display:grid; place-items:center; gap:2px;
+  color:var(--texto2); font-size:26px;
+  background:repeating-linear-gradient(45deg,var(--surface2) 0 10px,transparent 10px 20px);
+}
+.card-ex .txt{padding:9px 10px 11px}
+.card-ex .nome{font-family:'Barlow Condensed'; font-weight:600; font-size:17px; line-height:1.1}
+.card-ex .meta{display:flex; flex-wrap:wrap; gap:4px; margin-top:6px}
+.coracao{
+  position:absolute; top:6px; right:6px; width:32px; height:32px; border-radius:50%;
+  border:0; background:rgba(255,255,255,.9); cursor:pointer; font-size:15px; line-height:1;
+  display:grid; place-items:center;
+}
+[data-tema="escuro"] .coracao{background:rgba(0,0,0,.55)}
+
+/* ---------- filtros ---------- */
+.busca{position:relative}
+.busca input{padding-left:38px}
+.busca::before{content:"🔎"; position:absolute; left:12px; top:11px; font-size:15px}
+.chips{display:flex; gap:7px; overflow-x:auto; padding:12px 0 4px; scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  border:1px solid var(--line); background:var(--surface); color:var(--texto2);
+  border-radius:999px; padding:8px 14px; font-size:13px; font-weight:600;
+  white-space:nowrap; cursor:pointer;
+}
+.chip.on{background:var(--ink); border-color:var(--ink); color:var(--bg)}
+
+/* ---------- modal ---------- */
+.tela{
+  position:fixed; inset:0; z-index:60; background:rgba(10,13,18,.55);
+  display:flex; align-items:flex-end; justify-content:center;
+}
+.folha{
+  background:var(--surface); width:100%; max-width:640px; max-height:92vh; overflow-y:auto;
+  border-radius:20px 20px 0 0; padding:0 0 24px;
+}
+@media(min-width:700px){.tela{align-items:center} .folha{border-radius:20px}}
+.folha .cabeca{
+  position:sticky; top:0; background:var(--surface); padding:14px 16px;
+  border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; z-index:2;
+}
+.folha .conteudo{padding:16px}
+.foto-grande{aspect-ratio:4/3; width:100%; background:var(--surface2)}
+.foto-grande img{width:100%; height:100%; object-fit:cover}
+ol,ul{margin:8px 0; padding-left:20px}
+li{margin:5px 0}
+
+/* ---------- modo treino ---------- */
+.modo{position:fixed; inset:0; z-index:80; background:var(--bg); overflow-y:auto; padding-bottom:40px}
+.barra-prog{height:5px; background:var(--line)}
+.barra-prog>div{height:100%; background:var(--accent); transition:width .25s}
+.cronometro{font-family:'Barlow Condensed'; font-weight:700; font-size:76px; line-height:1; text-align:center}
+.pontos{display:flex; gap:7px; justify-content:center; margin:14px 0}
+.ponto{width:13px; height:13px; border-radius:50%; border:2px solid var(--line)}
+.ponto.feito{background:var(--accent); border-color:var(--accent)}
+
+/* ---------- lista ---------- */
+.item{
+  display:flex; gap:11px; align-items:center; padding:10px;
+  border:1px solid var(--line); border-radius:12px; background:var(--surface); margin-bottom:8px;
+}
+.item .mini{flex:0 0 56px; height:56px; border-radius:9px; overflow:hidden; background:var(--surface2)}
+.item .mini img{width:100%; height:100%; object-fit:cover}
+.item .cresce{flex:1; min-width:0}
+.item .cresce strong{font-family:'Barlow Condensed'; font-weight:600; font-size:17px; display:block}
+.vazio-msg{text-align:center; padding:38px 20px; color:var(--texto2)}
+.vazio-msg .emoji{font-size:34px; display:block; margin-bottom:8px}
+.aviso{
+  font-size:11.5px; color:var(--texto2); line-height:1.45;
+  border-top:1px solid var(--line); margin-top:26px; padding-top:14px;
+}
+.recado{padding:11px 13px; border-radius:11px; background:var(--surface2); border:1px solid var(--line); font-size:13.5px; margin:10px 0}
+.recado.erro{border-color:var(--accent); color:var(--accent)}
+#toast{
+  position:fixed; left:50%; bottom:84px; translate:-50% 0; z-index:99;
+  background:var(--ink); color:var(--bg); padding:11px 18px; border-radius:12px;
+  font-size:14px; font-weight:500; box-shadow:var(--sombra); max-width:88vw; text-align:center;
+}
+/* ---------- login ---------- */
+.login{min-height:100dvh; display:grid; place-items:center; padding:24px}
+.login .caixa{width:100%; max-width:380px}
+.login h1{font-size:38px; letter-spacing:-.01em}
+</style>
+</head>
+<body data-tema="claro">
+
+<div id="raiz"></div>
+
+<script>
+/* ============================================================
+   MEU TREINO VISUAL
+   Configuração — troque o nome do app e as chaves do Supabase.
+   ============================================================ */
+const CFG = {
+  nome: 'Meu Treino Visual',
+  versao: '1.0.0',
+  supabaseUrl: 'COLE_AQUI_A_URL',      // ex.: https://xxxxx.supabase.co
+  supabaseKey: 'COLE_AQUI_A_CHAVE'     // chave "anon public" do projeto
+};
+
+const DIAS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
+const DIAS_LONGO = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const LOCAIS = {casa:'Casa', academia:'Academia', ambos:'Casa e academia'};
+const NIVEIS = {iniciante:'Iniciante', intermediario:'Intermediário', avancado:'Avançado'};
+
+const S = {
+  user:null, token:null, tela:'inicio',
+  exercicios:[], grupos:[], equipamentos:[], favoritos:[],
+  treinos:[], historico:[], alunos:[],
+  alunoSel:null, editor:null, sessao:null, cronometro:null,
+  filtro:{busca:'', grupo:'', local:'', equip:'', nivel:'', sofavs:false},
+  diaSel:new Date().getDay(), detalhe:null, picker:false, formAluno:null, formEx:null
+};
+
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const grupoNome = slug => (S.grupos.find(g => g.slug === slug) || {}).nome || slug || '';
+const equipNome = slug => (S.equipamentos.find(e => e.slug === slug) || {}).nome || slug || '';
+const exPorId = id => S.exercicios.find(e => e.id === id);
+const tempo = seg => `${String(Math.floor(seg/60)).padStart(2,'0')}:${String(seg%60).padStart(2,'0')}`;
+const dataBR = iso => new Date(iso).toLocaleDateString('pt-BR') + ' · ' + new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+function toast(msg, erro){
+  const velho = $('#toast'); if (velho) velho.remove();
+  const d = document.createElement('div');
+  d.id = 'toast'; d.textContent = msg;
+  if (erro) d.style.background = 'var(--accent)', d.style.color = '#fff';
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 3400);
+}
+
+function tema(novo){
+  const t = novo || localStorage.mtv_tema || 'claro';
+  document.body.dataset.tema = t;
+  localStorage.mtv_tema = t;
+  if (novo) desenhar();
+}
+
+/* ---------- acesso ao Supabase ---------- */
+async function rpc(fn, args = {}){
+  if (CFG.supabaseUrl.startsWith('COLE')) throw new Error('Configure a URL e a chave do Supabase no início do arquivo.');
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json', apikey:CFG.supabaseKey, Authorization:'Bearer ' + CFG.supabaseKey},
+    body: JSON.stringify(args)
+  });
+  const txt = await r.text();
+  let dado = null; try { dado = txt ? JSON.parse(txt) : null; } catch(e){ dado = txt; }
+  if (!r.ok) throw new Error((dado && dado.message) || 'Não foi possível concluir. Tente de novo.');
+  return dado;
+}
+async function tabela(consulta){
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/${consulta}`, {
+    headers:{apikey:CFG.supabaseKey, Authorization:'Bearer ' + CFG.supabaseKey}
+  });
+  if (!r.ok) throw new Error('Falha ao carregar os dados do catálogo.');
+  return r.json();
+}
+
+/* ---------- imagens ---------- */
+function foto(ex, classe){
+  const cls = classe || 'foto';
+  if (ex && ex.imagem_url)
+    return `<div class="${cls}"><img src="${esc(ex.imagem_url)}" alt="${esc(ex.nome)}" loading="lazy"
+      onerror="this.parentNode.innerHTML='<div class=\\'vazio\\'>🏋️</div>'"></div>`;
+  return `<div class="${cls}"><div class="vazio">🏋️</div></div>`;
+}
+
+/* ============================================================
+   CARGA
+   ============================================================ */
+async function carregarCatalogo(){
+  const [gr, eq, ex] = await Promise.all([
+    tabela('mtv_grupos?select=*&order=ordem'),
+    tabela('mtv_equipamentos?select=*&order=nome'),
+    tabela('mtv_exercicios?select=*&ativo=eq.true&order=nome')
+  ]);
+  S.grupos = gr; S.equipamentos = eq; S.exercicios = ex;
+}
+async function carregarAluno(){
+  const [tr, hi, fa] = await Promise.all([
+    rpc('mtv_treinos_listar', {p_token:S.token}),
+    rpc('mtv_historico', {p_token:S.token}),
+    rpc('mtv_favoritos_listar', {p_token:S.token})
+  ]);
+  S.treinos = tr || []; S.historico = hi || []; S.favoritos = fa || [];
+}
+async function carregarAdmin(){
+  S.alunos = await rpc('mtv_alunos', {p_token:S.token}) || [];
+}
+
+async function iniciar(){
+  tema();
+  const t = localStorage.mtv_token;
+  if (!t) return desenhar();
+  try{
+    S.token = t;
+    S.user = await rpc('mtv_sessao', {p_token:t});
+    await carregarCatalogo();
+    if (S.user.papel === 'admin'){ S.tela = 'alunos'; await carregarAdmin(); }
+    else { S.tela = 'inicio'; await carregarAluno(); }
+  }catch(e){
+    localStorage.removeItem('mtv_token'); S.token = null; S.user = null;
+  }
+  desenhar();
+}
+
+async function entrar(email, senha, botao){
+  botao.disabled = true; botao.textContent = 'Entrando…';
+  try{
+    const r = await rpc('mtv_login', {p_email:email, p_senha:senha});
+    S.token = r.token; localStorage.mtv_token = r.token;
+    S.user = {id:r.id, nome:r.nome, email:r.email, papel:r.papel};
+    await carregarCatalogo();
+    if (r.papel === 'admin'){ S.tela = 'alunos'; await carregarAdmin(); }
+    else { S.tela = 'inicio'; await carregarAluno(); }
+    desenhar();
+  }catch(e){
+    botao.disabled = false; botao.textContent = 'Entrar';
+    $('#erro-login').textContent = e.message;
+    $('#erro-login').style.display = 'block';
+  }
+}
+async function sair(){
+  try{ await rpc('mtv_sair', {p_token:S.token}); }catch(e){}
+  localStorage.removeItem('mtv_token');
+  Object.assign(S, {user:null, token:null, treinos:[], historico:[], alunos:[], sessao:null});
+  desenhar();
+}
+
+/* ============================================================
+   DESENHO DAS TELAS
+   ============================================================ */
+function desenhar(){
+  const r = $('#raiz');
+  if (!S.user){ r.innerHTML = telaLogin(); return ligarLogin(); }
+  if (S.sessao){ r.innerHTML = telaModoTreino(); return ligarModoTreino(); }
+
+  const telas = {
+    inicio:telaInicio, exercicios:telaExercicios, treino:telaMeuTreino,
+    historico:telaHistorico, perfil:telaPerfil,
+    alunos:telaAlunos, biblioteca:telaBiblioteca, montar:telaMontar
+  };
+  const corpo = (telas[S.tela] || telaInicio)();
+  r.innerHTML = `${cabecalho()}<main>${corpo}</main>${navegacao()}
+    ${S.detalhe ? modalDetalhe() : ''}${S.picker ? modalPicker() : ''}
+    ${S.formAluno ? modalAluno() : ''}${S.formEx ? modalExercicio() : ''}`;
+  ligarGeral();
+}
+
+function cabecalho(){
+  return `<header class="topo">
+    <div class="marca">${esc(CFG.nome)}<span>${S.user.papel === 'admin' ? 'Professor' : 'Aluno'} · v${CFG.versao}</span></div>
+    <div class="dir">
+      <button class="icone-btn" data-tema-toggle title="Alternar claro e escuro">${document.body.dataset.tema === 'escuro' ? '☀️' : '🌙'}</button>
+      <button class="icone-btn" data-sair title="Sair">⏻</button>
+    </div>
+  </header>`;
+}
+
+function navegacao(){
+  const itens = S.user.papel === 'admin'
+    ? [['alunos','👥','Alunos'],['biblioteca','🏋️','Exercícios'],['montar','📋','Treinos'],['historico','📈','Histórico'],['perfil','👤','Perfil']]
+    : [['inicio','🏠','Início'],['exercicios','🏋️','Exercícios'],['treino','📋','Treino'],['historico','📈','Histórico'],['perfil','👤','Perfil']];
+  return `<nav class="rodape-nav">${itens.map(([id,ic,nome]) =>
+    `<button data-ir="${id}" ${S.tela === id ? 'aria-current="page"' : ''}><i>${ic}</i>${nome}</button>`).join('')}</nav>`;
+}
+
+/* ---------- login ---------- */
+function telaLogin(){
+  return `<div class="login"><div class="caixa">
+    <h1>${esc(CFG.nome)}</h1>
+    <p class="discreto" style="margin:6px 0 22px">Entre com o e-mail e a senha que seu professor cadastrou.</p>
+    <div class="cartao pad">
+      <label for="email">E-mail</label>
+      <input id="email" type="email" autocomplete="username" inputmode="email" placeholder="voce@email.com">
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" autocomplete="current-password" placeholder="Sua senha">
+      <div id="erro-login" class="recado erro" style="display:none"></div>
+      <button class="btn bloco" id="btn-entrar" style="margin-top:16px">Entrar</button>
+    </div>
+    <div class="linha" style="justify-content:space-between; margin-top:14px">
+      <span class="discreto">Versão ${CFG.versao}</span>
+      <button class="icone-btn" data-tema-toggle>${document.body.dataset.tema === 'escuro' ? '☀️' : '🌙'}</button>
+    </div>
+  </div></div>`;
+}
+function ligarLogin(){
+  const ir = () => entrar($('#email').value.trim(), $('#senha').value, $('#btn-entrar'));
+  $('#btn-entrar').onclick = ir;
+  $('#senha').onkeydown = e => { if (e.key === 'Enter') ir(); };
+  document.querySelectorAll('[data-tema-toggle]').forEach(b =>
+    b.onclick = () => tema(document.body.dataset.tema === 'escuro' ? 'claro' : 'escuro'));
+}
+
+/* ---------- início (aluno) ---------- */
+function telaInicio(){
+  const hoje = new Date().getDay();
+  const doDia = S.treinos.filter(t => t.dia_semana === S.diaSel);
+  const primeiro = S.treinos[0];
+  return `
+  <h2>Olá, ${esc(S.user.nome.split(' ')[0])}</h2>
+  <p class="discreto">${DIAS_LONGO[hoje]}, ${new Date().toLocaleDateString('pt-BR')}</p>
+
+  <div class="dias">${DIAS.map((d,i) => {
+    const tem = S.treinos.some(t => t.dia_semana === i);
+    return `<button data-dia="${i}" class="${i === S.diaSel ? 'ativo' : ''} ${tem ? 'marcado' : ''}">${d}</button>`;
+  }).join('')}</div>
+
+  ${doDia.length ? doDia.map(t => `
+    <div class="destaque" style="margin-bottom:12px">
+      <div class="faixa">${DIAS_LONGO[t.dia_semana].toUpperCase()}</div>
+      <div class="corpo">
+        <div class="entre">
+          <div><h2>${esc(t.nome)}</h2>
+            <span class="discreto">${t.itens.length} exercício${t.itens.length === 1 ? '' : 's'}</span></div>
+          <div class="contagem">${t.itens.length}</div>
+        </div>
+        <div class="tiras">${t.itens.slice(0,5).map(i => foto({imagem_url:i.imagem_url, nome:i.nome}, 'foto')).join('')}</div>
+        ${t.observacoes ? `<p class="discreto" style="margin:10px 0 0">${esc(t.observacoes)}</p>` : ''}
+        <button class="btn bloco" style="margin-top:14px" data-iniciar="${t.id}">Iniciar treino</button>
+      </div>
+    </div>`).join('')
+  : `<div class="cartao vazio-msg"><span class="emoji">🗓️</span>
+       <strong>Sem treino para ${DIAS_LONGO[S.diaSel].toLowerCase()}</strong>
+       <p class="discreto" style="margin:6px 0 0">${primeiro ? 'Toque em outro dia da semana para ver seus treinos.' : 'Seu professor ainda não montou seus treinos.'}</p>
+     </div>`}
+
+  <div class="sec-titulo"><h3>Atalhos</h3></div>
+  <div class="grade3">
+    <button class="cartao pad" data-ir="exercicios" style="cursor:pointer"><div style="font-size:22px">🏋️</div><strong class="cond">Exercícios</strong></button>
+    <button class="cartao pad" data-favs style="cursor:pointer"><div style="font-size:22px">❤️</div><strong class="cond">Favoritos</strong></button>
+    <button class="cartao pad" data-ir="historico" style="cursor:pointer"><div style="font-size:22px">📈</div><strong class="cond">Histórico</strong></button>
+  </div>
+  ${avisoSaude()}`;
+}
+
+/* ---------- biblioteca de exercícios (aluno) ---------- */
+function filtrar(){
+  const f = S.filtro, b = f.busca.toLowerCase();
+  return S.exercicios.filter(e =>
+    (!b || e.nome.toLowerCase().includes(b) || grupoNome(e.grupo).toLowerCase().includes(b) ||
+      (e.equipamentos||[]).some(q => equipNome(q).toLowerCase().includes(b))) &&
+    (!f.grupo || e.grupo === f.grupo || (e.secundarios||[]).includes(f.grupo)) &&
+    (!f.local || e.local === f.local || e.local === 'ambos') &&
+    (!f.equip || (e.equipamentos||[]).includes(f.equip)) &&
+    (!f.nivel || e.dificuldade === f.nivel) &&
+    (!f.sofavs || S.favoritos.includes(e.id))
+  );
+}
+function telaExercicios(){
+  const lista = filtrar();
+  return `
+  <div class="busca"><input id="busca" placeholder="Buscar exercício" value="${esc(S.filtro.busca)}"></div>
+  <div class="chips">
+    <button class="chip ${S.filtro.sofavs ? 'on' : ''}" data-filtro="sofavs">❤️ Favoritos</button>
+    <button class="chip ${!S.filtro.grupo ? 'on' : ''}" data-grupo="">Todos</button>
+    ${S.grupos.map(g => `<button class="chip ${S.filtro.grupo === g.slug ? 'on' : ''}" data-grupo="${g.slug}">${esc(g.nome)}</button>`).join('')}
+  </div>
+  <div class="grade3" style="margin:6px 0 14px">
+    <select data-f="local"><option value="">Onde treinar</option>${Object.entries(LOCAIS).map(([k,v]) => `<option value="${k}" ${S.filtro.local === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+    <select data-f="equip"><option value="">Equipamento</option>${S.equipamentos.map(e => `<option value="${e.slug}" ${S.filtro.equip === e.slug ? 'selected' : ''}>${esc(e.nome)}</option>`).join('')}</select>
+    <select data-f="nivel"><option value="">Nível</option>${Object.entries(NIVEIS).map(([k,v]) => `<option value="${k}" ${S.filtro.nivel === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+  </div>
+  <p class="discreto">${lista.length} exercício${lista.length === 1 ? '' : 's'}</p>
+  ${lista.length ? `<div class="grade-ex">${lista.map(cardEx).join('')}</div>`
+    : `<div class="cartao vazio-msg"><span class="emoji">🔍</span><strong>Nada encontrado</strong>
+       <p class="discreto">Mude a busca ou limpe os filtros.</p>
+       <button class="btn secundario pequeno" data-limpar style="margin-top:10px">Limpar filtros</button></div>`}
+  ${avisoSaude()}`;
+}
+function cardEx(e){
+  const fav = S.favoritos.includes(e.id);
+  return `<button class="card-ex" data-ex="${e.id}">
+    ${foto(e)}
+    ${S.user.papel === 'aluno' ? `<span class="coracao" data-fav="${e.id}" role="button" aria-label="Favoritar">${fav ? '❤️' : '🤍'}</span>` : ''}
+    <div class="txt">
+      <div class="nome">${esc(e.nome)}</div>
+      <div class="meta">
+        <span class="selo">${esc(grupoNome(e.grupo))}</span>
+        <span class="selo">${LOCAIS[e.local]}</span>
+      </div>
+    </div>
+  </button>`;
+}
+function modalDetalhe(){
+  const e = S.detalhe, fav = S.favoritos.includes(e.id);
+  return `<div class="tela" data-fechar><div class="folha">
+    <div class="cabeca"><h3 style="flex:1">${esc(e.nome)}</h3>
+      <button class="icone-btn" data-fechar-btn>✕</button></div>
+    ${foto(e,'foto-grande')}
+    <div class="conteudo">
+      <div class="meta" style="display:flex; flex-wrap:wrap; gap:6px">
+        <span class="selo forte">${esc(grupoNome(e.grupo))}</span>
+        ${(e.secundarios||[]).map(s => `<span class="selo">${esc(grupoNome(s))}</span>`).join('')}
+        <span class="selo">${LOCAIS[e.local]}</span>
+        <span class="selo">${NIVEIS[e.dificuldade]}</span>
+        ${(e.equipamentos||[]).map(q => `<span class="selo">${esc(equipNome(q))}</span>`).join('')}
+      </div>
+      ${e.descricao ? `<p>${esc(e.descricao)}</p>` : ''}
+      ${(e.instrucoes||[]).length ? `<h3 style="margin-top:16px">Como executar</h3><ol>${e.instrucoes.map(i => `<li>${esc(i)}</li>`).join('')}</ol>` : ''}
+      ${(e.erros||[]).length ? `<h3 style="margin-top:16px">Erros comuns</h3><ul>${e.erros.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}
+      <h3 style="margin-top:16px">Sugestão</h3>
+      <p>${e.series_sug || 3} séries · ${esc(e.reps_sug || '12')}${e.duracao_sug ? ' · ' + e.duracao_sug + ' segundos' : ''} · descanso de ${e.descanso_sug || 60} segundos</p>
+      ${S.user.papel === 'aluno'
+        ? `<button class="btn secundario bloco" data-fav="${e.id}" style="margin-top:14px">${fav ? '❤️ Remover dos favoritos' : '🤍 Adicionar aos favoritos'}</button>`
+        : `<button class="btn bloco" data-editar-ex="${e.id}" style="margin-top:14px">Editar exercício</button>`}
+    </div>
+  </div></div>`;
+}
+
+/* ---------- meu treino (aluno) ---------- */
+function telaMeuTreino(){
+  if (!S.treinos.length) return `<h2>Meu treino</h2>
+    <div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📋</span>
+      <strong>Nenhum treino montado</strong>
+      <p class="discreto">Assim que seu professor montar, ele aparece aqui.</p></div>`;
+  return `<h2>Meu treino</h2>
+  ${S.treinos.map(t => `
+    <div class="cartao pad" style="margin-top:12px">
+      <div class="entre">
+        <div><span class="selo forte">${DIAS[t.dia_semana]}</span>
+          <h3 style="margin-top:8px">${esc(t.nome)}</h3></div>
+        <button class="btn pequeno" data-iniciar="${t.id}">Iniciar</button>
+      </div>
+      <div style="margin-top:12px">
+        ${t.itens.map((i,n) => `<div class="item">
+          <div class="mini">${i.imagem_url ? `<img src="${esc(i.imagem_url)}" alt="">` : '<div class="vazio" style="display:grid;place-items:center;height:100%">🏋️</div>'}</div>
+          <div class="cresce"><strong>${n+1}. ${esc(i.nome)}</strong>
+            <span class="discreto">${i.series} × ${esc(i.reps || '')}${i.duracao ? ' · ' + i.duracao + 's' : ''} · descanso ${i.descanso}s</span>
+            ${i.observacoes ? `<div class="discreto">${esc(i.observacoes)}</div>` : ''}</div>
+          <button class="icone-btn" data-ex="${i.exercicio_id}">👁️</button>
+        </div>`).join('')}
+      </div>
+      ${t.observacoes ? `<div class="recado">${esc(t.observacoes)}</div>` : ''}
+    </div>`).join('')}
+  ${avisoSaude()}`;
+}
+
+/* ---------- histórico ---------- */
+function telaHistorico(){
+  const admin = S.user.papel === 'admin';
+  const lista = S.historico;
+  return `<h2>Histórico</h2>
+  ${admin ? `<label>Aluno</label><select data-hist-aluno>
+      <option value="">Selecione um aluno</option>
+      ${S.alunos.filter(a => a.papel === 'aluno').map(a => `<option value="${a.id}" ${S.alunoSel === a.id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}
+    </select>` : ''}
+  ${lista.length ? lista.map(s => `
+    <div class="item" style="margin-top:10px">
+      <div class="cresce">
+        <strong>${esc(s.treino_nome || 'Treino')}</strong>
+        <span class="discreto">${dataBR(s.finalizado_em)}</span>
+      </div>
+      <div style="text-align:right">
+        <div class="cond" style="font-size:21px">${Math.round(s.duracao_seg/60)} min</div>
+        <span class="discreto">${s.qtd_exercicios} exerc. · ${s.qtd_series} séries</span>
+      </div>
+    </div>`).join('')
+  : `<div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📈</span>
+      <strong>Nada registrado ainda</strong>
+      <p class="discreto">${admin ? 'Escolha um aluno para ver os treinos concluídos.' : 'Conclua um treino e ele aparece aqui.'}</p></div>`}`;
+}
+
+/* ---------- perfil ---------- */
+function telaPerfil(){
+  return `<h2>Perfil</h2>
+  <div class="cartao pad" style="margin-top:12px">
+    <strong class="cond" style="font-size:21px">${esc(S.user.nome)}</strong>
+    <div class="discreto">${esc(S.user.email)}</div>
+    <span class="selo" style="margin-top:8px">${S.user.papel === 'admin' ? 'Professor' : 'Aluno'}</span>
+  </div>
+
+  <div class="cartao pad" style="margin-top:12px">
+    <h3>Trocar senha</h3>
+    <label for="s-atual">Senha atual</label><input id="s-atual" type="password" autocomplete="current-password">
+    <label for="s-nova">Nova senha</label><input id="s-nova" type="password" autocomplete="new-password">
+    <button class="btn bloco" id="btn-senha" style="margin-top:14px">Salvar nova senha</button>
+  </div>
+
+  <div class="cartao pad" style="margin-top:12px">
+    <div class="entre"><div><strong>Aparência</strong><div class="discreto">Claro ou escuro</div></div>
+      <button class="icone-btn" data-tema-toggle>${document.body.dataset.tema === 'escuro' ? '☀️' : '🌙'}</button></div>
+  </div>
+
+  <button class="btn perigo bloco" data-sair style="margin-top:12px">Sair da conta</button>
+  <p class="discreto" style="text-align:center; margin-top:14px">${esc(CFG.nome)} · versão ${CFG.versao}</p>
+  ${avisoSaude()}`;
+}
+
+function avisoSaude(){
+  return `<p class="aviso">As informações apresentadas neste aplicativo possuem caráter educativo e não substituem
+  orientação médica, fisioterapêutica ou de profissional de Educação Física.</p>`;
+}
+
+/* ============================================================
+   MODO TREINO
+   ============================================================ */
+function abrirTreino(id){
+  const t = S.treinos.find(x => x.id === id);
+  if (!t || !t.itens.length) return toast('Este treino está sem exercícios.', true);
+  S.sessao = {treino:t, i:0, series:t.itens.map(() => 0), inicio:Date.now(), descanso:null, fim:false};
+  desenhar();
+}
+function telaModoTreino(){
+  const s = S.sessao, t = s.treino;
+  if (s.fim){
+    const min = Math.max(1, Math.round((Date.now() - s.inicio)/60000));
+    const series = s.series.reduce((a,b) => a+b, 0);
+    return `<div class="modo"><main style="padding-top:40px">
+      <div style="text-align:center">
+        <div style="font-size:52px">🎉</div>
+        <h1>Treino concluído</h1>
+        <p class="discreto">${esc(t.nome)} · ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</p>
+      </div>
+      <div class="grade3" style="margin-top:22px; text-align:center">
+        <div class="cartao pad"><div class="contagem" style="font-size:36px">${min}</div><span class="discreto">minutos</span></div>
+        <div class="cartao pad"><div class="contagem" style="font-size:36px">${t.itens.length}</div><span class="discreto">exercícios</span></div>
+        <div class="cartao pad"><div class="contagem" style="font-size:36px">${series}</div><span class="discreto">séries</span></div>
+      </div>
+      <button class="btn bloco" id="btn-salvar-sessao" style="margin-top:22px">Salvar no histórico</button>
+      <button class="btn secundario bloco" data-sair-treino style="margin-top:10px">Sair sem salvar</button>
+    </main></div>`;
+  }
+
+  const item = t.itens[s.i], ex = exPorId(item.exercicio_id) || item;
+  const total = t.itens.length;
+  const pct = Math.round((s.i / total) * 100);
+  const d = s.descanso;
+
+  return `<div class="modo">
+    <div class="barra-prog"><div style="width:${pct}%"></div></div>
+    <header class="topo" style="position:static">
+      <div class="marca">Exercício ${s.i+1} de ${total}<span>${esc(t.nome)} · v${CFG.versao}</span></div>
+      <div class="dir"><button class="icone-btn" data-sair-treino title="Encerrar">✕</button></div>
+    </header>
+    <main style="padding-bottom:40px">
+      ${d ? `
+        <div style="text-align:center; padding:22px 0">
+          <p class="discreto">Descanso</p>
+          <div class="cronometro" id="relogio">${tempo(d.resta)}</div>
+          <p class="discreto" style="margin-top:8px">Próxima: série ${s.series[s.i]+1} de ${item.series}</p>
+          <div class="grade2" style="max-width:320px; margin:18px auto 0">
+            <button class="btn secundario" data-pausar>${d.pausado ? '▶ Continuar' : '⏸ Pausar'}</button>
+            <button class="btn" data-pular>Pular descanso</button>
+          </div>
+        </div>
+        <div class="cartao pad" style="margin-top:10px">
+          <strong class="cond" style="font-size:19px">${esc(ex.nome)}</strong>
+          <div class="discreto">${item.series} séries × ${esc(item.reps || '')}</div>
+        </div>`
+      : `
+        <div class="cartao" style="overflow:hidden">
+          ${foto(ex,'foto-grande')}
+          <div class="pad">
+            <h2>${esc(ex.nome)}</h2>
+            <div class="meta" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px">
+              <span class="selo forte">${esc(grupoNome(ex.grupo))}</span>
+              <span class="selo">${item.series} séries</span>
+              <span class="selo">${esc(item.reps || '')}${item.duracao ? ' · ' + item.duracao + 's' : ''}</span>
+              <span class="selo">descanso ${item.descanso}s</span>
+            </div>
+            ${item.observacoes ? `<div class="recado">${esc(item.observacoes)}</div>` : ''}
+            <div class="pontos">${Array.from({length:item.series}, (_,n) =>
+              `<span class="ponto ${n < s.series[s.i] ? 'feito' : ''}"></span>`).join('')}</div>
+            <button class="btn bloco" data-concluir>Concluir série ${Math.min(s.series[s.i]+1, item.series)}</button>
+            <button class="btn fantasma bloco" data-ver="${ex.id || ''}" style="margin-top:6px">Ver como executar</button>
+          </div>
+        </div>
+        <div class="linha" style="margin-top:12px; gap:8px">
+          <button class="btn secundario" data-anterior ${s.i === 0 ? 'disabled' : ''} style="flex:1">← Anterior</button>
+          <button class="btn secundario" data-proximo style="flex:1">${s.i === total-1 ? 'Finalizar' : 'Próximo →'}</button>
+        </div>`}
+    </main>
+  </div>${S.detalhe ? modalDetalhe() : ''}`;
+}
+
+function ligarModoTreino(){
+  const s = S.sessao;
+  const q = (sel, fn) => document.querySelectorAll(sel).forEach(el => el.onclick = () => fn(el));
+
+  q('[data-sair-treino]', () => {
+    if (s.fim || confirm('Encerrar o treino? O que você fez não será salvo.')){
+      pararCronometro(); S.sessao = null; S.detalhe = null; desenhar();
+    }
+  });
+  q('[data-concluir]', () => {
+    const item = s.treino.itens[s.i];
+    s.series[s.i] = Math.min(s.series[s.i] + 1, item.series);
+    if (s.series[s.i] >= item.series){
+      if (s.i === s.treino.itens.length - 1){ s.fim = true; return desenhar(); }
+      s.i++; s.descanso = {resta:item.descanso || 60, pausado:false};
+    } else {
+      s.descanso = {resta:item.descanso || 60, pausado:false};
+    }
+    desenhar(); iniciarCronometro();
+  });
+  q('[data-pausar]', () => { s.descanso.pausado = !s.descanso.pausado; desenhar(); if (!s.descanso.pausado) iniciarCronometro(); });
+  q('[data-pular]', () => { pararCronometro(); s.descanso = null; desenhar(); });
+  q('[data-proximo]', () => {
+    if (s.i === s.treino.itens.length - 1){ s.fim = true; return desenhar(); }
+    s.i++; desenhar();
+  });
+  q('[data-anterior]', () => { if (s.i > 0){ s.i--; desenhar(); } });
+  q('[data-ver]', el => { S.detalhe = exPorId(el.dataset.ver) || null; desenhar(); ligarModoTreino(); });
+  q('[data-fechar-btn]', () => { S.detalhe = null; desenhar(); ligarModoTreino(); });
+  document.querySelectorAll('.tela').forEach(t => t.onclick = ev => {
+    if (ev.target === t){ S.detalhe = null; desenhar(); ligarModoTreino(); }
+  });
+
+  const bs = $('#btn-salvar-sessao');
+  if (bs) bs.onclick = async () => {
+    bs.disabled = true; bs.textContent = 'Salvando…';
+    try{
+      await rpc('mtv_sessao_registrar', {p_token:S.token, p_dados:{
+        treino_id:s.treino.id, treino_nome:s.treino.nome,
+        iniciado_em:new Date(s.inicio).toISOString(),
+        duracao_seg:Math.round((Date.now() - s.inicio)/1000),
+        qtd_exercicios:s.treino.itens.length,
+        qtd_series:s.series.reduce((a,b) => a+b, 0)
+      }});
+      S.historico = await rpc('mtv_historico', {p_token:S.token}) || [];
+      S.sessao = null; S.tela = 'historico'; desenhar(); toast('Treino salvo no histórico.');
+    }catch(e){ bs.disabled = false; bs.textContent = 'Salvar no histórico'; toast(e.message, true); }
+  };
+
+  if (s.descanso && !s.descanso.pausado) iniciarCronometro();
+}
+function iniciarCronometro(){
+  pararCronometro();
+  S.cronometro = setInterval(() => {
+    const d = S.sessao && S.sessao.descanso;
+    if (!d || d.pausado) return pararCronometro();
+    d.resta--;
+    const r = $('#relogio');
+    if (r) r.textContent = tempo(Math.max(0, d.resta));
+    if (d.resta <= 0){
+      pararCronometro(); S.sessao.descanso = null;
+      if (navigator.vibrate) navigator.vibrate([180,80,180]);
+      desenhar(); ligarModoTreino();
+    }
+  }, 1000);
+}
+function pararCronometro(){ if (S.cronometro) clearInterval(S.cronometro); S.cronometro = null; }
+
+/* ============================================================
+   PROFESSOR — ALUNOS
+   ============================================================ */
+function telaAlunos(){
+  return `<div class="sec-titulo"><h2>Alunos</h2>
+    <button class="btn pequeno" data-novo-aluno>+ Novo</button></div>
+  ${S.alunos.map(a => `
+    <div class="item">
+      <div class="mini" style="display:grid; place-items:center; font-family:'Barlow Condensed'; font-size:22px; font-weight:700">${esc(a.nome[0].toUpperCase())}</div>
+      <div class="cresce">
+        <strong>${esc(a.nome)}</strong>
+        <span class="discreto">${esc(a.email)}</span>
+        <div style="margin-top:5px; display:flex; gap:5px; flex-wrap:wrap">
+          ${a.papel === 'admin' ? '<span class="selo forte">Professor</span>' : ''}
+          <span class="selo">${a.treinos} treino${a.treinos == 1 ? '' : 's'}</span>
+          <span class="selo">${a.sessoes} ${a.sessoes == 1 ? 'sessão' : 'sessões'}</span>
+        </div>
+      </div>
+      <button class="icone-btn" data-editar-aluno="${a.id}">✏️</button>
+    </div>`).join('')}
+  ${S.alunos.length <= 1 ? `<div class="cartao vazio-msg"><span class="emoji">👥</span>
+    <strong>Cadastre seu primeiro aluno</strong>
+    <p class="discreto">Nome, e-mail e senha. Ele entra com esses dados.</p></div>` : ''}`;
+}
+function modalAluno(){
+  const a = S.formAluno, novo = !a.id;
+  return `<div class="tela" data-fechar><div class="folha">
+    <div class="cabeca"><h3 style="flex:1">${novo ? 'Novo aluno' : 'Editar aluno'}</h3>
+      <button class="icone-btn" data-fechar-btn>✕</button></div>
+    <div class="conteudo">
+      <label for="a-nome">Nome</label><input id="a-nome" value="${esc(a.nome || '')}">
+      <label for="a-email">E-mail</label><input id="a-email" type="email" inputmode="email" value="${esc(a.email || '')}">
+      <label for="a-senha">Senha ${novo ? '' : '(deixe em branco para manter a atual)'}</label>
+      <input id="a-senha" type="text" placeholder="${novo ? 'Defina uma senha' : 'Nova senha'}">
+      <div class="grade2">
+        <div><label for="a-tel">Telefone</label><input id="a-tel" value="${esc(a.telefone || '')}"></div>
+        <div><label for="a-papel">Acesso</label><select id="a-papel">
+          <option value="aluno" ${a.papel !== 'admin' ? 'selected' : ''}>Aluno</option>
+          <option value="admin" ${a.papel === 'admin' ? 'selected' : ''}>Professor</option>
+        </select></div>
+      </div>
+      <label for="a-obj">Objetivo</label><textarea id="a-obj" style="min-height:64px">${esc(a.objetivo || '')}</textarea>
+      <button class="btn bloco" id="btn-salvar-aluno" style="margin-top:16px">Salvar aluno</button>
+      ${novo ? '' : `<button class="btn perigo bloco" data-excluir-aluno="${a.id}" style="margin-top:10px">Excluir aluno</button>`}
+    </div>
+  </div></div>`;
+}
+
+/* ============================================================
+   PROFESSOR — BIBLIOTECA
+   ============================================================ */
+function telaBiblioteca(){
+  const lista = filtrar();
+  const semFoto = S.exercicios.filter(e => !e.imagem_url).length;
+  return `<div class="sec-titulo"><h2>Exercícios</h2>
+    <button class="btn pequeno" data-novo-ex>+ Novo</button></div>
+  ${semFoto ? `<div class="recado">${semFoto} exercício${semFoto === 1 ? ' está' : 's estão'} sem imagem. Abra o exercício e cole o endereço de uma imagem para ele aparecer nos cards.</div>` : ''}
+  <div class="busca"><input id="busca" placeholder="Buscar exercício" value="${esc(S.filtro.busca)}"></div>
+  <div class="chips">
+    <button class="chip ${!S.filtro.grupo ? 'on' : ''}" data-grupo="">Todos</button>
+    ${S.grupos.map(g => `<button class="chip ${S.filtro.grupo === g.slug ? 'on' : ''}" data-grupo="${g.slug}">${esc(g.nome)}</button>`).join('')}
+  </div>
+  <p class="discreto">${lista.length} exercício${lista.length === 1 ? '' : 's'}</p>
+  <div class="grade-ex">${lista.map(cardEx).join('')}</div>`;
+}
+function modalExercicio(){
+  const e = S.formEx, novo = !e.id;
+  const sel = (v,k) => v === k ? 'selected' : '';
+  return `<div class="tela" data-fechar><div class="folha">
+    <div class="cabeca"><h3 style="flex:1">${novo ? 'Novo exercício' : 'Editar exercício'}</h3>
+      <button class="icone-btn" data-fechar-btn>✕</button></div>
+    <div class="conteudo">
+      <label for="e-nome">Nome</label><input id="e-nome" value="${esc(e.nome || '')}">
+      <label for="e-img">Endereço da imagem</label>
+      <input id="e-img" placeholder="https://…" value="${esc(e.imagem_url || '')}">
+      <p class="discreto" style="margin:6px 0 0">Cole o link de uma imagem hospedada (Supabase Storage, Google Drive público, Imgur, site do fabricante). O card mostra a imagem assim que o endereço for válido.</p>
+      ${e.imagem_url ? `<div style="margin-top:10px">${foto(e,'foto-grande')}</div>` : ''}
+      <label for="e-desc">Descrição curta</label><input id="e-desc" value="${esc(e.descricao || '')}">
+      <div class="grade2">
+        <div><label for="e-grupo">Grupo principal</label><select id="e-grupo">
+          ${S.grupos.map(g => `<option value="${g.slug}" ${sel(e.grupo, g.slug)}>${esc(g.nome)}</option>`).join('')}</select></div>
+        <div><label for="e-nivel">Dificuldade</label><select id="e-nivel">
+          ${Object.entries(NIVEIS).map(([k,v]) => `<option value="${k}" ${sel(e.dificuldade, k)}>${v}</option>`).join('')}</select></div>
+      </div>
+      <label for="e-sec">Grupos secundários</label>
+      <select id="e-sec" multiple size="5">${S.grupos.map(g =>
+        `<option value="${g.slug}" ${(e.secundarios||[]).includes(g.slug) ? 'selected' : ''}>${esc(g.nome)}</option>`).join('')}</select>
+      <label for="e-eq">Equipamentos</label>
+      <select id="e-eq" multiple size="5">${S.equipamentos.map(q =>
+        `<option value="${q.slug}" ${(e.equipamentos||[]).includes(q.slug) ? 'selected' : ''}>${esc(q.nome)}</option>`).join('')}</select>
+      <label for="e-local">Onde treinar</label><select id="e-local">
+        ${Object.entries(LOCAIS).map(([k,v]) => `<option value="${k}" ${sel(e.local, k)}>${v}</option>`).join('')}</select>
+      <label for="e-ins">Como executar (um passo por linha)</label>
+      <textarea id="e-ins">${esc((e.instrucoes || []).join('\n'))}</textarea>
+      <label for="e-err">Erros comuns (um por linha)</label>
+      <textarea id="e-err" style="min-height:70px">${esc((e.erros || []).join('\n'))}</textarea>
+      <div class="grade3">
+        <div><label for="e-ser">Séries</label><input id="e-ser" type="number" value="${e.series_sug || 3}"></div>
+        <div><label for="e-rep">Repetições</label><input id="e-rep" value="${esc(e.reps_sug || '12')}"></div>
+        <div><label for="e-des">Descanso (s)</label><input id="e-des" type="number" value="${e.descanso_sug || 60}"></div>
+      </div>
+      <label for="e-dur">Duração em segundos (para isometria, deixe vazio se não usar)</label>
+      <input id="e-dur" type="number" value="${e.duracao_sug || ''}">
+      <button class="btn bloco" id="btn-salvar-ex" style="margin-top:16px">Salvar exercício</button>
+      ${novo ? '' : `<button class="btn perigo bloco" data-excluir-ex="${e.id}" style="margin-top:10px">Excluir exercício</button>`}
+    </div>
+  </div></div>`;
+}
+
+/* ============================================================
+   PROFESSOR — MONTAR TREINO
+   ============================================================ */
+function telaMontar(){
+  if (!S.alunoSel){
+    return `<h2>Treinos</h2>
+    <p class="discreto">Escolha o aluno para montar ou revisar os treinos da semana.</p>
+    ${S.alunos.filter(a => a.papel === 'aluno').map(a => `
+      <div class="item" style="margin-top:10px">
+        <div class="mini" style="display:grid; place-items:center; font-family:'Barlow Condensed'; font-size:22px; font-weight:700">${esc(a.nome[0].toUpperCase())}</div>
+        <div class="cresce"><strong>${esc(a.nome)}</strong><span class="discreto">${a.treinos} treino${a.treinos == 1 ? '' : 's'} montado${a.treinos == 1 ? '' : 's'}</span></div>
+        <button class="btn pequeno" data-aluno="${a.id}">Abrir</button>
+      </div>`).join('') ||
+      `<div class="cartao vazio-msg"><span class="emoji">👥</span><strong>Nenhum aluno cadastrado</strong>
+       <p class="discreto">Cadastre um aluno para montar o treino dele.</p></div>`}`;
+  }
+
+  const aluno = S.alunos.find(a => a.id === S.alunoSel) || {nome:'Aluno'};
+
+  if (S.editor){
+    const ed = S.editor;
+    return `<div class="linha" style="gap:8px"><button class="icone-btn" data-voltar-editor>←</button>
+      <h2 style="flex:1">${ed.id ? 'Editar treino' : 'Novo treino'}</h2></div>
+    <p class="discreto">${esc(aluno.nome)}</p>
+    <div class="cartao pad" style="margin-top:12px">
+      <label for="t-nome">Nome do treino</label>
+      <input id="t-nome" value="${esc(ed.nome)}" placeholder="Ex.: Glúteos e estabilidade">
+      <label>Dia da semana</label>
+      <div class="dias">${DIAS.map((d,i) =>
+        `<button data-dia-ed="${i}" class="${ed.dia_semana === i ? 'ativo' : ''}">${d}</button>`).join('')}</div>
+      <label for="t-obs">Observações para o aluno</label>
+      <textarea id="t-obs" style="min-height:60px">${esc(ed.observacoes || '')}</textarea>
+    </div>
+
+    <div class="sec-titulo"><h3>Exercícios (${ed.itens.length})</h3>
+      <button class="btn pequeno" data-abrir-picker>+ Adicionar</button></div>
+    ${ed.itens.length ? ed.itens.map((it,n) => {
+      const ex = exPorId(it.exercicio_id) || {};
+      return `<div class="cartao pad" style="margin-bottom:10px">
+        <div class="linha">
+          <div class="mini" style="flex:0 0 56px; height:56px; border-radius:9px; overflow:hidden; background:var(--surface2)">
+            ${ex.imagem_url ? `<img src="${esc(ex.imagem_url)}" alt="" style="width:100%;height:100%;object-fit:cover">` : '<div class="vazio" style="display:grid;place-items:center;height:100%">🏋️</div>'}</div>
+          <div class="cresce"><strong class="cond" style="font-size:17px">${n+1}. ${esc(ex.nome || '')}</strong>
+            <div class="discreto">${esc(grupoNome(ex.grupo))}</div></div>
+          <button class="icone-btn" data-subir="${n}" ${n === 0 ? 'disabled' : ''}>↑</button>
+          <button class="icone-btn" data-descer="${n}" ${n === ed.itens.length-1 ? 'disabled' : ''}>↓</button>
+          <button class="icone-btn" data-remover="${n}">🗑️</button>
+        </div>
+        <div class="grade3" style="margin-top:10px">
+          <div><label for="i-ser-${n}">Séries</label><input id="i-ser-${n}" type="number" data-campo="series" data-i="${n}" value="${it.series}"></div>
+          <div><label for="i-rep-${n}">Repetições</label><input id="i-rep-${n}" data-campo="reps" data-i="${n}" value="${esc(it.reps || '')}"></div>
+          <div><label for="i-des-${n}">Descanso (s)</label><input id="i-des-${n}" type="number" data-campo="descanso" data-i="${n}" value="${it.descanso}"></div>
+        </div>
+        <label for="i-obs-${n}">Observação</label>
+        <input id="i-obs-${n}" data-campo="observacoes" data-i="${n}" value="${esc(it.observacoes || '')}" placeholder="Ex.: cadência lenta na descida">
+      </div>`;
+    }).join('') : `<div class="cartao vazio-msg"><span class="emoji">🏋️</span>
+      <strong>Nenhum exercício ainda</strong>
+      <p class="discreto">Toque em Adicionar e escolha pelas imagens.</p></div>`}
+
+    <button class="btn bloco" id="btn-salvar-treino" style="margin-top:14px">Salvar treino</button>
+    ${ed.id ? `<button class="btn perigo bloco" data-excluir-treino="${ed.id}" style="margin-top:10px">Excluir treino</button>` : ''}`;
+  }
+
+  return `<div class="linha" style="gap:8px"><button class="icone-btn" data-voltar-aluno>←</button>
+    <h2 style="flex:1">${esc(aluno.nome)}</h2>
+    <button class="btn pequeno" data-novo-treino>+ Treino</button></div>
+  ${S.treinos.length ? S.treinos.map(t => `
+    <div class="cartao pad" style="margin-top:12px">
+      <div class="entre">
+        <div><span class="selo forte">${DIAS[t.dia_semana]}</span><h3 style="margin-top:8px">${esc(t.nome)}</h3>
+          <span class="discreto">${t.itens.length} exercício${t.itens.length === 1 ? '' : 's'}</span></div>
+        <button class="btn pequeno secundario" data-editar-treino="${t.id}">Editar</button>
+      </div>
+      <div class="tiras" style="margin-top:10px">${t.itens.slice(0,5).map(i => foto({imagem_url:i.imagem_url}, 'foto')).join('')}</div>
+    </div>`).join('')
+  : `<div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📋</span>
+      <strong>Sem treinos montados</strong><p class="discreto">Crie o primeiro treino da semana.</p></div>`}`;
+}
+
+function modalPicker(){
+  const lista = filtrar();
+  return `<div class="tela" data-fechar><div class="folha">
+    <div class="cabeca"><h3 style="flex:1">Escolher exercícios</h3>
+      <button class="icone-btn" data-fechar-btn>✕</button></div>
+    <div class="conteudo">
+      <div class="busca"><input id="busca" placeholder="Buscar exercício" value="${esc(S.filtro.busca)}"></div>
+      <div class="chips">
+        <button class="chip ${!S.filtro.grupo ? 'on' : ''}" data-grupo="">Todos</button>
+        ${S.grupos.map(g => `<button class="chip ${S.filtro.grupo === g.slug ? 'on' : ''}" data-grupo="${g.slug}">${esc(g.nome)}</button>`).join('')}
+      </div>
+      <div class="grade-ex" style="margin-top:10px">
+        ${lista.map(e => `<button class="card-ex" data-add="${e.id}">
+          ${foto(e)}
+          <div class="txt"><div class="nome">${esc(e.nome)}</div>
+            <div class="meta"><span class="selo">${esc(grupoNome(e.grupo))}</span></div>
+            <div class="selo forte" style="margin-top:6px">+ Adicionar</div></div>
+        </button>`).join('')}
+      </div>
+    </div>
+  </div></div>`;
+}
+
+/* ============================================================
+   EVENTOS
+   ============================================================ */
+function ligarGeral(){
+  const q = (sel, fn) => document.querySelectorAll(sel).forEach(el => el.onclick = ev => fn(el, ev));
+
+  q('[data-tema-toggle]', () => tema(document.body.dataset.tema === 'escuro' ? 'claro' : 'escuro'));
+  q('[data-sair]', () => { if (confirm('Sair da conta?')) sair(); });
+  q('[data-ir]', el => { S.tela = el.dataset.ir; if (S.tela === 'exercicios') S.filtro.sofavs = false; desenhar(); });
+  q('[data-dia]', el => { S.diaSel = +el.dataset.dia; desenhar(); });
+  q('[data-favs]', () => { S.tela = 'exercicios'; S.filtro.sofavs = true; desenhar(); });
+  q('[data-limpar]', () => { S.filtro = {busca:'', grupo:'', local:'', equip:'', nivel:'', sofavs:false}; desenhar(); });
+  q('[data-grupo]', el => { S.filtro.grupo = el.dataset.grupo; desenhar(); });
+  q('[data-iniciar]', el => abrirTreino(el.dataset.iniciar));
+
+  const busca = $('#busca');
+  if (busca) busca.oninput = e => {
+    S.filtro.busca = e.target.value;
+    const foco = document.activeElement === busca;
+    desenhar();
+    if (foco){ const nova = $('#busca'); nova.focus(); nova.setSelectionRange(nova.value.length, nova.value.length); }
+  };
+  document.querySelectorAll('[data-f]').forEach(s => s.onchange = e => { S.filtro[s.dataset.f] = e.target.value; desenhar(); });
+
+  // cartão do exercício: coração tem prioridade sobre abrir detalhe
+  q('.card-ex[data-ex]', (el, ev) => {
+    const coracao = ev.target.closest('[data-fav]');
+    if (coracao) return alternarFavorito(coracao.dataset.fav);
+    S.detalhe = exPorId(el.dataset.ex); desenhar();
+  });
+  q('.icone-btn[data-ex]', el => { S.detalhe = exPorId(el.dataset.ex); desenhar(); });
+  q('.btn[data-fav]', el => alternarFavorito(el.dataset.fav));
+  q('[data-fechar-btn]', () => { S.detalhe = null; S.picker = false; S.formAluno = null; S.formEx = null; desenhar(); });
+  document.querySelectorAll('.tela').forEach(t => t.onclick = ev => {
+    if (ev.target === t){ S.detalhe = null; S.picker = false; S.formAluno = null; S.formEx = null; desenhar(); }
+  });
+
+  // trocar senha
+  const bs = $('#btn-senha');
+  if (bs) bs.onclick = async () => {
+    const at = $('#s-atual').value, nv = $('#s-nova').value;
+    if (!at || !nv) return toast('Preencha a senha atual e a nova.', true);
+    bs.disabled = true;
+    try{ await rpc('mtv_trocar_senha', {p_token:S.token, p_atual:at, p_nova:nv}); toast('Senha alterada.'); desenhar(); }
+    catch(e){ bs.disabled = false; toast(e.message, true); }
+  };
+
+  // histórico do aluno (professor)
+  const ha = document.querySelector('[data-hist-aluno]');
+  if (ha) ha.onchange = async e => {
+    S.alunoSel = e.target.value || null;
+    S.historico = S.alunoSel ? (await rpc('mtv_historico', {p_token:S.token, p_aluno:S.alunoSel}) || []) : [];
+    desenhar();
+  };
+
+  if (S.user.papel === 'admin') ligarAdmin(q);
+}
+
+async function alternarFavorito(id){
+  try{
+    const virou = await rpc('mtv_favorito_alternar', {p_token:S.token, p_exercicio:id});
+    S.favoritos = virou ? [...S.favoritos, id] : S.favoritos.filter(f => f !== id);
+    desenhar();
+  }catch(e){ toast(e.message, true); }
+}
+
+function ligarAdmin(q){
+  /* ----- alunos ----- */
+  q('[data-novo-aluno]', () => { S.formAluno = {papel:'aluno'}; desenhar(); });
+  q('[data-editar-aluno]', el => { S.formAluno = {...S.alunos.find(a => a.id === el.dataset.editarAluno)}; desenhar(); });
+  const ba = $('#btn-salvar-aluno');
+  if (ba) ba.onclick = async () => {
+    const dados = {
+      p_token:S.token, p_id:S.formAluno.id || null,
+      p_nome:$('#a-nome').value.trim(), p_email:$('#a-email').value.trim(),
+      p_senha:$('#a-senha').value, p_papel:$('#a-papel').value,
+      p_telefone:$('#a-tel').value.trim(), p_objetivo:$('#a-obj').value.trim()
+    };
+    if (!dados.p_nome || !dados.p_email) return toast('Informe nome e e-mail.', true);
+    ba.disabled = true; ba.textContent = 'Salvando…';
+    try{
+      await rpc('mtv_aluno_salvar', dados);
+      await carregarAdmin(); S.formAluno = null; desenhar(); toast('Aluno salvo.');
+    }catch(e){ ba.disabled = false; ba.textContent = 'Salvar aluno'; toast(e.message, true); }
+  };
+  q('[data-excluir-aluno]', async el => {
+    if (!confirm('Excluir este aluno? Os treinos e o histórico dele também serão apagados.')) return;
+    try{ await rpc('mtv_aluno_excluir', {p_token:S.token, p_id:el.dataset.excluirAluno});
+      await carregarAdmin(); S.formAluno = null; desenhar(); toast('Aluno excluído.'); }
+    catch(e){ toast(e.message, true); }
+  });
+
+  /* ----- exercícios ----- */
+  q('[data-novo-ex]', () => { S.formEx = {grupo:S.grupos[0].slug, dificuldade:'iniciante', local:'ambos'}; desenhar(); });
+  q('[data-editar-ex]', el => { S.formEx = {...exPorId(el.dataset.editarEx)}; S.detalhe = null; desenhar(); });
+  const be = $('#btn-salvar-ex');
+  if (be) be.onclick = async () => {
+    const linhas = id => $(id).value.split('\n').map(t => t.trim()).filter(Boolean);
+    const multi = id => Array.from($(id).selectedOptions).map(o => o.value);
+    const d = {
+      id:S.formEx.id || null, nome:$('#e-nome').value.trim(), descricao:$('#e-desc').value.trim(),
+      grupo:$('#e-grupo').value, secundarios:multi('#e-sec'), equipamentos:multi('#e-eq'),
+      local:$('#e-local').value, dificuldade:$('#e-nivel').value,
+      instrucoes:linhas('#e-ins'), erros:linhas('#e-err'),
+      series_sug:$('#e-ser').value, reps_sug:$('#e-rep').value.trim(),
+      duracao_sug:$('#e-dur').value, descanso_sug:$('#e-des').value,
+      imagem_url:$('#e-img').value.trim()
+    };
+    if (!d.nome) return toast('Informe o nome do exercício.', true);
+    be.disabled = true; be.textContent = 'Salvando…';
+    try{
+      await rpc('mtv_exercicio_salvar', {p_token:S.token, p_dados:d});
+      await carregarCatalogo(); S.formEx = null; desenhar(); toast('Exercício salvo.');
+    }catch(e){ be.disabled = false; be.textContent = 'Salvar exercício'; toast(e.message, true); }
+  };
+  q('[data-excluir-ex]', async el => {
+    if (!confirm('Excluir este exercício? Ele sairá também dos treinos onde estiver.')) return;
+    try{ await rpc('mtv_exercicio_excluir', {p_token:S.token, p_id:el.dataset.excluirEx});
+      await carregarCatalogo(); S.formEx = null; desenhar(); toast('Exercício excluído.'); }
+    catch(e){ toast(e.message, true); }
+  });
+
+  /* ----- treinos ----- */
+  q('[data-aluno]', async el => {
+    S.alunoSel = el.dataset.aluno; S.editor = null;
+    S.treinos = await rpc('mtv_treinos_listar', {p_token:S.token, p_aluno:S.alunoSel}) || [];
+    desenhar();
+  });
+  q('[data-voltar-aluno]', () => { S.alunoSel = null; S.treinos = []; desenhar(); });
+  q('[data-voltar-editor]', () => { S.editor = null; desenhar(); });
+  q('[data-novo-treino]', () => { S.editor = {nome:'', dia_semana:1, observacoes:'', itens:[]}; desenhar(); });
+  q('[data-editar-treino]', el => {
+    const t = S.treinos.find(x => x.id === el.dataset.editarTreino);
+    S.editor = {id:t.id, nome:t.nome, dia_semana:t.dia_semana, observacoes:t.observacoes || '',
+      itens:t.itens.map(i => ({exercicio_id:i.exercicio_id, series:i.series, reps:i.reps, duracao:i.duracao, descanso:i.descanso, observacoes:i.observacoes}))};
+    desenhar();
+  });
+  q('[data-dia-ed]', el => { S.editor.dia_semana = +el.dataset.diaEd; guardarCampos(); desenhar(); });
+  q('[data-abrir-picker]', () => { guardarCampos(); S.picker = true; desenhar(); });
+  q('[data-add]', el => {
+    const ex = exPorId(el.dataset.add);
+    S.editor.itens.push({exercicio_id:ex.id, series:ex.series_sug || 3, reps:ex.reps_sug || '12',
+      duracao:ex.duracao_sug || null, descanso:ex.descanso_sug || 60, observacoes:''});
+    toast(`${ex.nome} adicionado.`);
+    desenhar();
+  });
+  q('[data-subir]', el => { const n = +el.dataset.subir; guardarCampos();
+    [S.editor.itens[n-1], S.editor.itens[n]] = [S.editor.itens[n], S.editor.itens[n-1]]; desenhar(); });
+  q('[data-descer]', el => { const n = +el.dataset.descer; guardarCampos();
+    [S.editor.itens[n+1], S.editor.itens[n]] = [S.editor.itens[n], S.editor.itens[n+1]]; desenhar(); });
+  q('[data-remover]', el => { guardarCampos(); S.editor.itens.splice(+el.dataset.remover, 1); desenhar(); });
+
+  const bt = $('#btn-salvar-treino');
+  if (bt) bt.onclick = async () => {
+    guardarCampos();
+    if (!S.editor.nome) return toast('Dê um nome ao treino.', true);
+    if (!S.editor.itens.length) return toast('Adicione pelo menos um exercício.', true);
+    bt.disabled = true; bt.textContent = 'Salvando…';
+    try{
+      await rpc('mtv_treino_salvar', {p_token:S.token, p_dados:{...S.editor, aluno_id:S.alunoSel}});
+      S.treinos = await rpc('mtv_treinos_listar', {p_token:S.token, p_aluno:S.alunoSel}) || [];
+      await carregarAdmin(); S.editor = null; desenhar(); toast('Treino salvo.');
+    }catch(e){ bt.disabled = false; bt.textContent = 'Salvar treino'; toast(e.message, true); }
+  };
+  q('[data-excluir-treino]', async el => {
+    if (!confirm('Excluir este treino?')) return;
+    try{
+      await rpc('mtv_treino_excluir', {p_token:S.token, p_id:el.dataset.excluirTreino});
+      S.treinos = await rpc('mtv_treinos_listar', {p_token:S.token, p_aluno:S.alunoSel}) || [];
+      await carregarAdmin(); S.editor = null; desenhar(); toast('Treino excluído.');
+    }catch(e){ toast(e.message, true); }
+  });
+}
+
+/* guarda o que está digitado no editor antes de redesenhar a tela */
+function guardarCampos(){
+  if (!S.editor) return;
+  const n = $('#t-nome'), o = $('#t-obs');
+  if (n) S.editor.nome = n.value.trim();
+  if (o) S.editor.observacoes = o.value.trim();
+  document.querySelectorAll('[data-campo]').forEach(el => {
+    const it = S.editor.itens[+el.dataset.i];
+    if (!it) return;
+    it[el.dataset.campo] = el.dataset.campo === 'series' || el.dataset.campo === 'descanso'
+      ? (parseInt(el.value, 10) || 0) : el.value;
+  });
+}
+
+iniciar();
+</script>
+</body>
+</html>
