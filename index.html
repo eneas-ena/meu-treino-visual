@@ -66,6 +66,7 @@ button,input,select,textarea{font-family:inherit; font-size:15px; color:inherit}
   display:grid; place-items:center;
 }
 main{max-width:920px; margin:0 auto; padding:16px 16px 96px}
+body.sem-menu main{padding-bottom:32px}
 .rodape-nav{
   position:fixed; left:0; right:0; bottom:0; z-index:40;
   background:var(--surface); border-top:1px solid var(--line);
@@ -284,7 +285,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.6.0',
+  versao: '1.7.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
   supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
@@ -484,7 +485,7 @@ async function iniciar(){
     S.user = await rpc('mtv_sessao', {p_token:t});
     await carregarCatalogo();
     if (S.user.papel === 'admin'){ S.tela = 'alunos'; await carregarAdmin(); }
-    else { S.tela = 'inicio'; await carregarAluno(); }
+    else { S.tela = 'treino'; await carregarAluno(); }
   }catch(e){
     localStorage.removeItem('mtv_token'); S.token = null; S.user = null;
   }
@@ -499,7 +500,7 @@ async function entrar(email, senha, botao){
     S.user = {id:r.id, nome:r.nome, email:r.email, papel:r.papel};
     await carregarCatalogo();
     if (r.papel === 'admin'){ S.tela = 'alunos'; await carregarAdmin(); }
-    else { S.tela = 'inicio'; await carregarAluno(); }
+    else { S.tela = 'treino'; await carregarAluno(); }
     desenhar();
   }catch(e){
     botao.disabled = false; botao.textContent = 'Entrar';
@@ -527,6 +528,8 @@ function desenhar(){
     historico:telaHistorico, perfil:telaPerfil,
     alunos:telaAlunos, biblioteca:telaBiblioteca, montar:telaMontar, meutreino:telaMeuTreino
   };
+  if (S.user.papel !== 'admin') S.tela = 'treino';   // aluno só acessa o próprio treino
+  document.body.classList.toggle('sem-menu', S.user.papel !== 'admin');
   const corpo = (telas[S.tela] || telaInicio)();
   r.innerHTML = `${cabecalho()}<main>${corpo}</main>${navegacao()}
     ${S.detalhe ? modalDetalhe() : ''}${S.picker ? modalPicker() : ''}
@@ -545,6 +548,7 @@ function cabecalho(){
 }
 
 function navegacao(){
+  if (S.user.papel !== 'admin') return '';   // aluno não tem outras abas
   const itens = S.user.papel === 'admin'
     ? [['alunos','👥','Alunos'],['biblioteca','🏋️','Exercícios'],['montar','📋','Treinos'],['meutreino','🏃','Meu treino'],['historico','📈','Histórico'],['perfil','👤','Perfil']]
     : [['inicio','🏠','Início'],['exercicios','🏋️','Exercícios'],['treino','📋','Treino'],['historico','📈','Histórico'],['perfil','👤','Perfil']];
@@ -688,9 +692,9 @@ function modalDetalhe(){
       ${(e.erros||[]).length ? `<h3 style="margin-top:16px">Erros comuns</h3><ul>${e.erros.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}
       <h3 style="margin-top:16px">Sugestão</h3>
       <p>${e.series_sug || 3} séries · ${esc(e.reps_sug || '12')}${e.duracao_sug ? ' · ' + e.duracao_sug + ' segundos' : ''} · descanso de ${e.descanso_sug || 60} segundos</p>
-      ${S.user.papel === 'aluno'
-        ? `<button class="btn secundario bloco" data-fav="${e.id}" style="margin-top:14px">${fav ? '❤️ Remover dos favoritos' : '🤍 Adicionar aos favoritos'}</button>`
-        : `<button class="btn bloco" data-editar-ex="${e.id}" style="margin-top:14px">Editar exercício</button>`}
+      ${S.user.papel === 'admin'
+        ? `<button class="btn bloco" data-editar-ex="${e.id}" style="margin-top:14px">Editar exercício</button>`
+        : `<button class="btn secundario bloco" data-fav="${e.id}" style="margin-top:14px">${fav ? '❤️ Remover dos favoritos' : '🤍 Adicionar aos favoritos'}</button>`}
     </div>
   </div></div>`;
 }
@@ -1443,6 +1447,7 @@ function ligarAdmin(q){
 
 /* Formulário de exercício: usado no painel e também durante o treino. */
 function ligarFormExercicio(q){
+  if (S.user.papel !== 'admin') return;   // formulário de exercício é só do professor
   q('[data-editar-ex]', el => { S.formEx = {...exPorId(el.dataset.editarEx)}; S.detalhe = null; desenhar(); });
   const be = $('#btn-salvar-ex');
   if (be) be.onclick = async () => {
