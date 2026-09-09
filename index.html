@@ -199,7 +199,7 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
 
 /* ---------- modal ---------- */
 .tela{
-  position:fixed; inset:0; z-index:60; background:rgba(10,13,18,.55);
+  position:fixed; inset:0; z-index:90; background:rgba(10,13,18,.55);
   display:flex; align-items:flex-end; justify-content:center;
 }
 .folha{
@@ -225,6 +225,18 @@ li{margin:5px 0}
 .pontos{display:flex; gap:7px; justify-content:center; margin:14px 0}
 .ponto{width:13px; height:13px; border-radius:50%; border:2px solid var(--line)}
 .ponto.feito{background:var(--accent); border-color:var(--accent)}
+
+/* ---------- caixa de descanso ---------- */
+.caixa-descanso{
+  position:fixed; inset:0; z-index:85; background:rgba(10,13,18,.5);
+  display:grid; place-items:center; padding:20px;
+}
+.caixa-descanso .interno{
+  background:var(--surface); border:1px solid var(--line); border-radius:20px;
+  box-shadow:var(--sombra); padding:22px 20px; width:100%; max-width:330px; text-align:center;
+}
+.cronometro.alerta{color:var(--accent); animation:pisca .8s ease-in-out infinite}
+@keyframes pisca{50%{opacity:.3}}
 
 /* ---------- lista ---------- */
 .item{
@@ -265,7 +277,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.2.0',
+  versao: '1.3.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
   supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
@@ -792,21 +804,7 @@ function telaModoTreino(){
       <div class="dir"><button class="icone-btn" data-sair-treino title="Encerrar">✕</button></div>
     </header>
     <main style="padding-bottom:40px">
-      ${d ? `
-        <div style="text-align:center; padding:22px 0">
-          <p class="discreto">Descanso</p>
-          <div class="cronometro" id="relogio">${tempo(d.resta)}</div>
-          <p class="discreto" style="margin-top:8px">Próxima: série ${s.series[s.i]+1} de ${item.series}</p>
-          <div class="grade2" style="max-width:320px; margin:18px auto 0">
-            <button class="btn secundario" data-pausar>${d.pausado ? '▶ Continuar' : '⏸ Pausar'}</button>
-            <button class="btn" data-pular>Pular descanso</button>
-          </div>
-        </div>
-        <div class="cartao pad" style="margin-top:10px">
-          <strong class="cond" style="font-size:19px">${esc(ex.nome)}</strong>
-          <div class="discreto">${item.series} séries × ${esc(item.reps || '')}</div>
-        </div>`
-      : `
+      ${`
         <div class="cartao" style="overflow:hidden">
           ${foto(ex,'foto-grande')}
           <div class="pad">
@@ -829,7 +827,18 @@ function telaModoTreino(){
           <button class="btn secundario" data-proximo style="flex:1">${s.i === total-1 ? 'Finalizar' : 'Próximo →'}</button>
         </div>`}
     </main>
-  </div>${S.detalhe ? modalDetalhe() : ''}`;
+  </div>
+  ${d ? `<div class="caixa-descanso"><div class="interno">
+      <p class="discreto">Descanso</p>
+      <div class="cronometro ${d.resta <= 10 ? 'alerta' : ''}" id="relogio">${tempo(Math.max(0, d.resta))}</div>
+      <p class="discreto" style="margin-top:6px" id="aviso-descanso">
+        ${d.resta <= 10 ? 'Prepare-se!' : `Próxima: série ${s.series[s.i]+1} de ${item.series}`}</p>
+      <div class="grade2" style="margin-top:16px">
+        <button class="btn secundario" data-pausar>${d.pausado ? '▶ Continuar' : '⏸ Pausar'}</button>
+        <button class="btn" data-pular>Pular descanso</button>
+      </div>
+    </div></div>` : ''}
+  ${S.detalhe ? modalDetalhe() : ''}`;
 }
 
 function ligarModoTreino(){
@@ -883,17 +892,44 @@ function ligarModoTreino(){
 
   if (s.descanso && !s.descanso.pausado) iniciarCronometro();
 }
+/* Apito curto para avisar o fim do descanso sem precisar olhar a tela. */
+let audio = null;
+function bipe(altura, duracao){
+  try{
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    const som = audio.createOscillator(), volume = audio.createGain();
+    som.type = 'sine'; som.frequency.value = altura;
+    volume.gain.setValueAtTime(.0001, audio.currentTime);
+    volume.gain.exponentialRampToValueAtTime(.3, audio.currentTime + .02);
+    volume.gain.exponentialRampToValueAtTime(.0001, audio.currentTime + duracao);
+    som.connect(volume); volume.connect(audio.destination);
+    som.start(); som.stop(audio.currentTime + duracao);
+  }catch(e){ /* sem som disponível, o aviso visual continua valendo */ }
+}
+
 function iniciarCronometro(){
   pararCronometro();
   S.cronometro = setInterval(() => {
     const d = S.sessao && S.sessao.descanso;
     if (!d || d.pausado) return pararCronometro();
     d.resta--;
-    const r = $('#relogio');
+    const r = $('#relogio'), aviso = $('#aviso-descanso');
     if (r) r.textContent = tempo(Math.max(0, d.resta));
+
+    if (d.resta === 10){
+      if (r) r.classList.add('alerta');
+      if (aviso) aviso.textContent = 'Prepare-se!';
+      if (navigator.vibrate) navigator.vibrate(120);
+      bipe(660, .18);
+    } else if (d.resta < 10 && d.resta > 0){
+      bipe(660, .09);
+    }
+
     if (d.resta <= 0){
       pararCronometro(); S.sessao.descanso = null;
       if (navigator.vibrate) navigator.vibrate([180,80,180]);
+      bipe(980, .35);
       desenhar(); ligarModoTreino();
     }
   }, 1000);
