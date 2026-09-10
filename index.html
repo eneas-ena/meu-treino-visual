@@ -286,7 +286,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.8.0',
+  versao: '1.9.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
   supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
@@ -785,9 +785,9 @@ function telaHistorico(){
   const admin = S.user.papel === 'admin';
   const lista = S.historico;
   return `<h2>Histórico</h2>
-  ${admin ? `<label>Aluno</label><select data-hist-aluno>
-      <option value="">Selecione um aluno</option>
-      ${S.alunos.filter(a => a.papel === 'aluno').map(a => `<option value="${a.id}" ${S.alunoSel === a.id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}
+  ${admin ? `<label for="hist-aluno">De quem</label><select id="hist-aluno" data-hist-aluno>
+      <option value="">Selecione uma pessoa</option>
+      ${S.alunos.map(a => `<option value="${a.id}" ${S.alunoSel === a.id ? 'selected' : ''}>${esc(a.nome)}${a.id === S.user.id ? ' (você)' : ''}</option>`).join('')}
     </select>` : ''}
   ${lista.length ? lista.map(s => `
     <div class="item" style="margin-top:10px">
@@ -802,7 +802,7 @@ function telaHistorico(){
     </div>`).join('')
   : `<div class="cartao vazio-msg" style="margin-top:14px"><span class="emoji">📈</span>
       <strong>Nada registrado ainda</strong>
-      <p class="discreto">${admin ? 'Escolha um aluno para ver os treinos concluídos.' : 'Conclua um treino e ele aparece aqui.'}</p></div>`}`;
+      <p class="discreto">${admin ? (S.alunoSel ? 'Nenhum treino concluído até agora.' : 'Escolha uma pessoa para ver os treinos concluídos. Você também está na lista.') : 'Conclua um treino e ele aparece aqui.'}</p></div>`}`;
 }
 
 /* ---------- perfil ---------- */
