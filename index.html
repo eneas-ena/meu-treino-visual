@@ -221,7 +221,8 @@ textarea{min-height:92px; resize:vertical; line-height:1.45}
 }
 .folha .conteudo{padding:16px}
 .foto-grande{aspect-ratio:1/1; width:100%; background:var(--surface2)}
-.foto-grande img{width:100%; height:100%; object-fit:contain}
+.foto-grande img, .foto-grande video{width:100%; height:100%; object-fit:contain; display:block}
+.zona video{width:100%; aspect-ratio:1/1; object-fit:contain; border-radius:10px; display:block; background:#000}
 ol,ul{margin:8px 0; padding-left:20px}
 li{margin:5px 0}
 
@@ -285,7 +286,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.7.0',
+  versao: '1.8.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://attyhnudqfblvtyjcmyt.supabase.co',
   supabaseKey: 'sb_publishable_m2GHgT2iOnzi2gycA9Gshw_gVQo53qo',
@@ -312,7 +313,7 @@ const S = {
   treinos:[], meusTreinos:[], historico:[], alunos:[],
   alunoSel:null, editor:null, sessao:null, cronometro:null,
   filtro:{busca:'', grupo:'', local:'', equip:'', nivel:'', sofavs:false},
-  diaSel:new Date().getDay(), detalhe:null, picker:false, formAluno:null, formEx:null,
+  diaSel:new Date().getDay(), detalhe:null, picker:false, formAluno:null, formEx:null, videoAtivo:null,
   sugestor:null
 };
 
@@ -443,6 +444,55 @@ function tiras(itens){
     ${visiveis.map(i => foto({imagem_url:i.imagem_url, nome:i.nome})).join('')}
     ${resto > 0 ? `<div class="mais">+${resto}</div>` : ''}</div>`;
 }
+
+async function enviarVideo(arquivo){
+  const previa = $('#previa-video');
+  if (!arquivo) return;
+  if (!/^video\//.test(arquivo.type)) return toast('Escolha um arquivo de vídeo (MP4 ou WEBM).', true);
+  if (arquivo.size > 3 * 1024 * 1024)
+    return toast(`O vídeo tem ${(arquivo.size/1048576).toFixed(1)} MB. O limite é 3 MB — corte para poucos segundos e sem áudio.`, true);
+  if (previa) previa.innerHTML = '<span class="discreto">Enviando vídeo…</span>';
+  try{
+    const extensao = (arquivo.name.split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nome = (($('#e-nome').value.trim() || 'exercicio')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')) + '-' + Date.now() + '.' + extensao;
+    const r = await fetch(`${CFG.supabaseUrl}/storage/v1/object/${CFG.bucket}/${nome}`, {
+      method:'POST',
+      headers:{apikey:CFG.supabaseKey, Authorization:'Bearer ' + CFG.supabaseKey,
+               'Content-Type':arquivo.type, 'x-upsert':'true'},
+      body: arquivo
+    });
+    if (!r.ok){
+      const t = await r.text();
+      throw new Error(t.includes('mime') || t.includes('Payload')
+        ? 'A pasta ainda não aceita vídeo. Rode o atualizacao-video.sql no Supabase.'
+        : 'Não foi possível enviar o vídeo.');
+    }
+    const publico = `${CFG.supabaseUrl}/storage/v1/object/public/${CFG.bucket}/${nome}`;
+    $('#e-video').value = publico;
+    if (previa) previa.innerHTML = `<video src="${publico}" autoplay loop muted playsinline></video>`;
+    toast('Vídeo enviado.');
+  }catch(e){
+    if (previa) previa.innerHTML = '<span class="discreto">Arraste o vídeo aqui ou toque para escolher</span>';
+    toast(e.message, true);
+  }
+}
+
+/* Mostra o vídeo no lugar da imagem enquanto o aluno quiser vê-lo. */
+function midia(ex, classe){
+  if (ex && ex.video_url && S.videoAtivo === ex.id)
+    return `<div class="${classe || 'foto'}">
+      <video src="${esc(ex.video_url)}" autoplay loop muted playsinline
+        onerror="this.parentNode.innerHTML='<div class=\'vazio\'>🎬</div>'"></video></div>`;
+  return foto(ex, classe);
+}
+function botaoVideo(ex){
+  if (!ex || !ex.video_url) return '';
+  return `<button class="btn secundario bloco" data-video="${ex.id}" style="margin-top:10px">
+    ${S.videoAtivo === ex.id ? '⏹ Parar vídeo' : '▶ Ver vídeo'}</button>`;
+}
+function alternarVideo(id){ S.videoAtivo = S.videoAtivo === id ? null : id; }
 
 function foto(ex, classe){
   const cls = classe || 'foto';
@@ -678,8 +728,9 @@ function modalDetalhe(){
   return `<div class="tela" data-fechar><div class="folha">
     <div class="cabeca"><h3 style="flex:1">${esc(e.nome)}</h3>
       <button class="icone-btn" data-fechar-btn>✕</button></div>
-    ${foto(e,'foto-grande')}
+    ${midia(e,'foto-grande')}
     <div class="conteudo">
+      ${botaoVideo(e)}
       <div class="meta" style="display:flex; flex-wrap:wrap; gap:6px">
         <span class="selo forte">${esc(grupoNome(e.grupo))}</span>
         ${(e.secundarios||[]).map(s => `<span class="selo">${esc(grupoNome(s))}</span>`).join('')}
@@ -829,7 +880,7 @@ function telaModoTreino(){
     <main style="padding-bottom:40px">
       ${`
         <div class="cartao" style="overflow:hidden">
-          ${foto(ex,'foto-grande')}
+          ${midia(ex,'foto-grande')}
           <div class="pad">
             <h2>${esc(ex.nome)}</h2>
             <div class="meta" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px">
@@ -842,6 +893,7 @@ function telaModoTreino(){
             <div class="pontos">${Array.from({length:item.series}, (_,n) =>
               `<span class="ponto ${n < s.series[s.i] ? 'feito' : ''}"></span>`).join('')}</div>
             <button class="btn bloco" data-concluir>Concluir série ${Math.min(s.series[s.i]+1, item.series)}</button>
+            ${botaoVideo(ex)}
             <button class="btn fantasma bloco" data-ver="${ex.id || ''}" style="margin-top:6px">Ver como executar</button>
           </div>
         </div>
@@ -888,11 +940,13 @@ function ligarModoTreino(){
   q('[data-pausar]', () => { s.descanso.pausado = !s.descanso.pausado; desenhar(); if (!s.descanso.pausado) iniciarCronometro(); });
   q('[data-pular]', () => { pararCronometro(); s.descanso = null; desenhar(); });
   q('[data-proximo]', () => {
+    S.videoAtivo = null;
     if (s.i === s.treino.itens.length - 1){ s.fim = true; return desenhar(); }
     s.i++; desenhar();
   });
-  q('[data-anterior]', () => { if (s.i > 0){ s.i--; desenhar(); } });
+  q('[data-anterior]', () => { if (s.i > 0){ S.videoAtivo = null; s.i--; desenhar(); } });
   q('[data-ver]', el => { S.detalhe = exPorId(el.dataset.ver) || null; desenhar(); ligarModoTreino(); });
+  q('[data-video]', el => { alternarVideo(el.dataset.video); desenhar(); ligarModoTreino(); });
   q('[data-fechar-btn]', () => { S.detalhe = null; desenhar(); ligarModoTreino(); });
   document.querySelectorAll('.tela').forEach(t => t.onclick = ev => {
     if (ev.target === t){ S.detalhe = null; S.formEx = null; desenhar(); ligarModoTreino(); }
@@ -1063,6 +1117,17 @@ function modalExercicio(){
       <label for="e-img">Ou cole o endereço de uma imagem</label>
       <input id="e-img" placeholder="https://…" value="${esc(e.imagem_url || '')}">
       <p class="discreto" style="margin:6px 0 0">Link do Google Drive é convertido sozinho, desde que o arquivo esteja compartilhado com "qualquer pessoa com o link".</p>
+      <label>Vídeo curto (opcional)</label>
+      <div id="zona-video" class="zona" role="button" tabindex="0" title="Arraste um vídeo ou toque para escolher">
+        <div id="previa-video">${e.video_url
+          ? `<video src="${esc(e.video_url)}" autoplay loop muted playsinline></video>`
+          : '<span class="discreto">Arraste o vídeo aqui ou toque para escolher</span>'}</div>
+      </div>
+      <input id="e-arq-video" type="file" accept="video/*" style="display:none">
+      <label for="e-video">Ou cole o endereço de um vídeo</label>
+      <input id="e-video" placeholder="https://…" value="${esc(e.video_url || '')}">
+      <p class="discreto" style="margin:6px 0 0">Poucos segundos, sem áudio, até 3 MB. Ele roda em repetição até o aluno parar.</p>
+
       <label for="e-desc">Descrição curta</label><input id="e-desc" value="${esc(e.descricao || '')}">
       <div class="grade2">
         <div><label for="e-grupo">Grupo principal</label><select id="e-grupo">
@@ -1377,6 +1442,7 @@ function ligarGeral(){
   });
   q('.icone-btn[data-ex]', el => { S.detalhe = exPorId(el.dataset.ex); desenhar(); });
   q('.btn[data-fav]', el => alternarFavorito(el.dataset.fav));
+  q('[data-video]', el => { alternarVideo(el.dataset.video); desenhar(); });
   const fecharTudo = () => { S.detalhe = null; S.picker = false; S.formAluno = null; S.formEx = null; S.sugestor = null; desenhar(); };
   q('[data-fechar-btn]', fecharTudo);
   document.querySelectorAll('.tela').forEach(t => t.onclick = ev => { if (ev.target === t) fecharTudo(); });
@@ -1460,7 +1526,8 @@ function ligarFormExercicio(q){
       instrucoes:linhas('#e-ins'), erros:linhas('#e-err'),
       series_sug:$('#e-ser').value, reps_sug:$('#e-rep').value.trim(),
       duracao_sug:$('#e-dur').value, descanso_sug:$('#e-des').value,
-      imagem_url:normalizarUrl($('#e-img').value.trim())
+      imagem_url:normalizarUrl($('#e-img').value.trim()),
+      video_url:normalizarUrl($('#e-video').value.trim())
     };
     if (!d.nome) return toast('Informe o nome do exercício.', true);
     be.disabled = true; be.textContent = 'Salvando…';
@@ -1477,6 +1544,14 @@ function ligarFormExercicio(q){
     zona.ondragleave = () => zona.classList.remove('sobre');
     zona.ondrop = ev => { ev.preventDefault(); zona.classList.remove('sobre'); enviarImagem(ev.dataTransfer.files[0]); };
     arq.onchange = ev => enviarImagem(ev.target.files[0]);
+    const zonaVideo = $('#zona-video'), arqVideo = $('#e-arq-video');
+    zonaVideo.onclick = () => arqVideo.click();
+    zonaVideo.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') arqVideo.click(); };
+    zonaVideo.ondragover = ev => { ev.preventDefault(); zonaVideo.classList.add('sobre'); };
+    zonaVideo.ondragleave = () => zonaVideo.classList.remove('sobre');
+    zonaVideo.ondrop = ev => { ev.preventDefault(); zonaVideo.classList.remove('sobre'); enviarVideo(ev.dataTransfer.files[0]); };
+    arqVideo.onchange = ev => enviarVideo(ev.target.files[0]);
+
     const campo = $('#e-img');
     campo.onchange = () => {
       campo.value = normalizarUrl(campo.value.trim());
