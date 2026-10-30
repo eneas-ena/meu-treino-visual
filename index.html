@@ -286,7 +286,7 @@ li{margin:5px 0}
    ============================================================ */
 const CFG = {
   nome: 'Meu Treino Visual',
-  versao: '1.9.1',
+  versao: '1.10.0',
   bucket: 'exercicios',                // pasta de imagens no Supabase Storage
   supabaseUrl: 'https://ghjbljypxksubmcsvaig.supabase.co',   // v1.9.1: projeto quiz-biblico
   supabaseKey: 'sb_publishable_qXCYqg1WdmelY9D1mptZXg_U8NdoKby',
@@ -592,6 +592,7 @@ function cabecalho(){
     <div class="marca">${esc(CFG.nome)}<span>${S.user.papel === 'admin' ? 'Professor' : 'Aluno'} · v${CFG.versao}</span></div>
     <div class="dir">
       <button class="icone-btn" data-tema-toggle title="Alternar claro e escuro">${document.body.dataset.tema === 'escuro' ? '☀️' : '🌙'}</button>
+      <button class="icone-btn" data-atualizar title="Atualizar app">⟳</button>
       <button class="icone-btn" data-sair title="Sair">⏻</button>
     </div>
   </header>`;
@@ -620,7 +621,7 @@ function telaLogin(){
       <button class="btn bloco" id="btn-entrar" style="margin-top:16px">Entrar</button>
     </div>
     <div class="linha" style="justify-content:space-between; margin-top:14px">
-      <span class="discreto">Versão ${CFG.versao}</span>
+      <span class="discreto">Versão ${CFG.versao} · <button class="btn fantasma pequeno" data-atualizar style="display:inline;padding:4px 6px">Atualizar app</button></span>
       <button class="icone-btn" data-tema-toggle>${document.body.dataset.tema === 'escuro' ? '☀️' : '🌙'}</button>
     </div>
   </div></div>`;
@@ -824,6 +825,11 @@ function telaPerfil(){
   <div class="cartao pad" style="margin-top:12px">
     <div class="entre"><div><strong>Aparência</strong><div class="discreto">Claro ou escuro</div></div>
       <button class="icone-btn" data-tema-toggle>${document.body.dataset.tema === 'escuro' ? '☀️' : '🌙'}</button></div>
+  </div>
+
+  <div class="cartao pad" style="margin-top:12px">
+    <div class="entre"><div><strong>Atualizar app</strong><div class="discreto">Busca a versão mais nova</div></div>
+      <button class="btn secundario pequeno" data-atualizar>Atualizar</button></div>
   </div>
 
   <button class="btn perigo bloco" data-sair style="margin-top:12px">Sair da conta</button>
@@ -1373,8 +1379,9 @@ async function sugestaoIA(aluno, opcoes){
     .map(e => ({id:e.id, nome:e.nome, grupo:e.grupo, dificuldade:e.dificuldade, equipamentos:e.equipamentos}));
   const r = await fetch(CFG.iaUrl, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({aluno:resumo, opcoes, exercicios:catalogo})
+    body:JSON.stringify({token:S.token, aluno:resumo, opcoes, exercicios:catalogo})
   });
+  if (r.status === 401) throw new Error('Sua entrada expirou. Saia da conta e entre de novo para usar a IA.');
   if (!r.ok) throw new Error('O serviço de IA não respondeu. Use o rascunho por regras.');
   const dado = await r.json();
   const validos = (dado.itens || []).filter(i => exPorId(i.exercicio_id)).slice(0, opcoes.qtd);
@@ -1663,6 +1670,31 @@ function lerOpcoesSugestor(){
   if (q) S.sugestor.qtd = +q.value;
   if (l) S.sugestor.local = l.value;
 }
+
+/* ---------- atualização do app ---------- */
+async function atualizarAgora(){
+  try{ if ('serviceWorker' in navigator){ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r => r.unregister())); } }catch(e){}
+  try{ if (window.caches){ const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } }catch(e){}
+  location.replace(location.href.split('#')[0].split('?')[0] + '?v=' + Date.now());
+}
+async function verificarVersao(){
+  try{
+    const r = await fetch(location.href.split('#')[0].split('?')[0] + '?nc=' + Date.now(), {cache:'no-store'});
+    if (!r.ok) return;
+    const m = (await r.text()).match(/versao: '([^']+)'/);
+    if (!m || m[1] === CFG.versao || $('#aviso-versao')) return;
+    const d = document.createElement('div');
+    d.id = 'aviso-versao'; d.setAttribute('role', 'status');
+    d.style.cssText = 'position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:9999;max-width:480px;margin:0 auto;background:var(--accent);color:#fff;border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(0,0,0,.25);font-weight:600';
+    d.innerHTML = `<span>Nova versão disponível (v${esc(m[1])})</span><button type="button" style="background:#fff;color:#111;border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;white-space:nowrap">Atualizar agora</button>`;
+    d.querySelector('button').onclick = atualizarAgora;
+    document.body.appendChild(d);
+  }catch(e){}
+}
+document.addEventListener('click', ev => { if (ev.target.closest('[data-atualizar]')) atualizarAgora(); });
+setTimeout(verificarVersao, 3000);
+setInterval(verificarVersao, 30 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) verificarVersao(); });
 
 /* guarda o que está digitado no editor antes de redesenhar a tela */
 function guardarCampos(){
